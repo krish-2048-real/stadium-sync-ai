@@ -32,7 +32,7 @@ jest.mock("@/lib/simulatedData", () => ({
     maxCapacity: 88000,
     gates: [
       {
-        gateId: "Gate-N1",
+        gateId: "Gate A",
         currentWaitTime: 45,
         capacity: 100,
         utilizationPercent: 45,
@@ -40,7 +40,7 @@ jest.mock("@/lib/simulatedData", () => ({
         requiresImmediateRerouting: false,
       },
       {
-        gateId: "Gate-S1",
+        gateId: "Gate B",
         currentWaitTime: 120,
         capacity: 90,
         utilizationPercent: 133,
@@ -50,18 +50,27 @@ jest.mock("@/lib/simulatedData", () => ({
     ],
     navigationPaths: [
       {
-        pathId: "Path-Test",
+        pathId: "Wheelchair & Limited-Mobility Accessibility Paths",
         from: "A",
         to: "B",
         estimatedMinutes: 5,
         congestionPercent: 20,
         isAccessible: false,
         isWheelchairAccessible: true,
+      },
+      {
+        pathId: "Standard Spectator Routes",
+        from: "Gate A",
+        to: "North Stand",
+        estimatedMinutes: 10,
+        congestionPercent: 50,
+        isAccessible: true,
+        isWheelchairAccessible: false,
       }
     ],
     transportationHubs: [
       {
-        hubId: "Test-Hub-Train",
+        hubId: "Match-Day Shuttles",
         mode: "train",
         currentThroughput: 100,
         maxCapacity: 200,
@@ -115,6 +124,7 @@ jest.mock("@/lib/simulatedData", () => ({
 // Import components after mocks are set up
 import CrowdManagement from "@/components/CrowdManagement";
 import Sustainability from "@/components/Sustainability";
+import MultilingualAssistant from "@/components/MultilingualAssistant";
 import { validatePayload } from "@/lib/validation";
 
 /* ------------------------------------------------------------------ */
@@ -175,9 +185,9 @@ describe("CrowdManagement Component", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Gate-N1")).toBeInTheDocument();
+      expect(screen.getByText("Gate A")).toBeInTheDocument();
     });
-    expect(screen.getByText("Gate-S1")).toBeInTheDocument();
+    expect(screen.getByText("Gate B")).toBeInTheDocument();
   });
 
   it("renders the AI alert badge when response arrives", async () => {
@@ -216,7 +226,7 @@ describe("CrowdManagement Component", () => {
           analysis: "Test.",
           deploymentSuggestions: [
             {
-              location: "Gate-S1",
+              location: "Gate B",
               action: "Deploy 3 additional staff members immediately",
               priority: "urgent",
             },
@@ -292,6 +302,8 @@ describe("CrowdManagement Component", () => {
 
     await waitFor(() => {
       expect(screen.getByTitle("Wheelchair Accessible Route")).toBeInTheDocument();
+      expect(screen.getByText("Wheelchair & Limited-Mobility Accessibility Paths")).toBeInTheDocument();
+      expect(screen.getByText("Standard Spectator Routes")).toBeInTheDocument();
       expect(screen.getByText(/Blocked/i)).toBeInTheDocument();
     });
   });
@@ -306,7 +318,7 @@ describe("CrowdManagement Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText("+10m")).toBeInTheDocument();
-      expect(screen.getByText("Test-Hub-Train")).toBeInTheDocument();
+      expect(screen.getByText("Match-Day Shuttles")).toBeInTheDocument();
     });
   });
 
@@ -319,7 +331,7 @@ describe("CrowdManagement Component", () => {
     fireEvent.click(screen.getByRole("button", { name: /analyze gate wait times/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("REROUTE")).toBeInTheDocument();
+      expect(screen.getByText("Immediate Rerouting Action Required")).toBeInTheDocument();
     });
   });
 
@@ -335,7 +347,7 @@ describe("CrowdManagement Component", () => {
     fireEvent.click(screen.getByRole("button", { name: /analyze gate wait times/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("🚨 IMMEDIATE EVAC/REROUTE INITIATED")).toBeInTheDocument();
+      expect(screen.getByText("🚨 Immediate Rerouting Action Required")).toBeInTheDocument();
     });
   });
 });
@@ -362,6 +374,7 @@ describe("Sustainability Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText("🗑️ Waste & Recycling Dashboard")).toBeInTheDocument();
+      expect(screen.getByText("Smart Energy Grid")).toBeInTheDocument();
       expect(screen.getByText("3,500 kg")).toBeInTheDocument(); // totalWasteKg
       expect(screen.getByText("2,000 kg")).toBeInTheDocument(); // recycledKg
       expect(screen.getByText("57%")).toBeInTheDocument(); // diversionRate
@@ -390,7 +403,19 @@ describe("Sustainability Component", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*  3. API Route Validation Tests                                      */
+/*  3. Multilingual Assistant Component Tests                          */
+/* ------------------------------------------------------------------ */
+
+describe("MultilingualAssistant Component", () => {
+  it("renders 8+ target languages checkboxes perfectly", () => {
+    render(<MultilingualAssistant />);
+    expect(screen.getByText("Spanish")).toBeInTheDocument();
+    expect(screen.getByText("French")).toBeInTheDocument();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  4. API Route Validation Tests                                      */
 /* ------------------------------------------------------------------ */
 
 describe("GenAI API Route — Input Validation", () => {
@@ -435,7 +460,7 @@ describe("GenAI API Route — Input Validation", () => {
         maxCapacity: 88000,
         gates: [
           {
-            gateId: "Gate-N1",
+            gateId: "Gate A",
             currentWaitTime: 45,
             capacity: 100,
             utilizationPercent: 45,

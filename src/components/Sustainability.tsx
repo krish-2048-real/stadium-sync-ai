@@ -414,7 +414,7 @@ function SustainabilityInner() {
       {energyData && (
         <section className="mb-6">
           <header className="mb-3">
-             <h3 className="text-sm font-semibold text-slate-300">Energy Grid Activity</h3>
+             <h3 className="text-sm font-semibold text-slate-300">Smart Energy Grid</h3>
           </header>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {renderedGridCards}

@@ -26,12 +26,7 @@ import type {
 
 const ZONES = ["north", "south", "east", "west"] as const;
 
-const GATE_IDS: Record<(typeof ZONES)[number], string[]> = {
-  north: ["N1", "N2", "N3"],
-  south: ["S1", "S2", "S3"],
-  east: ["E1", "E2"],
-  west: ["W1", "W2"],
-};
+
 
 const MAX_CAPACITY = 88_000; // FIFA WC 2026 MetLife-scale stadium
 
@@ -67,37 +62,33 @@ function randFloat(min: number, max: number): number {
 /* ------------------------------------------------------------------ */
 
 /**
- * Generates simulated gate data for every entry point.
+ * Generates simulated gate data for every entry point (Gates A, B, C, D).
  * Optimised with pre-allocated array size and flat mapping.
  *
  * @returns {GateData[]} Array of generated GateData objects
  */
 export function generateGateData(): GateData[] {
-  const gates: GateData[] = [];
-  const zonesLen = ZONES.length;
+  const gates = [
+    { id: "Gate A", zone: "north" },
+    { id: "Gate B", zone: "south" },
+    { id: "Gate C", zone: "east" },
+    { id: "Gate D", zone: "west" },
+  ] as const;
 
-  for (let z = 0; z < zonesLen; z++) {
-    const zone = ZONES[z];
-    const ids = GATE_IDS[zone];
-    const idsLen = ids.length;
+  return gates.map(g => {
+    const capacity = randInt(80, 150);
+    const currentWaitTime = randInt(2, capacity + 40); // can exceed capacity
+    const utilizationPercent = Math.round((currentWaitTime / capacity) * 100);
 
-    for (let i = 0; i < idsLen; i++) {
-      const capacity = randInt(80, 150);
-      const currentWaitTime = randInt(2, capacity + 40); // can exceed capacity
-      const utilizationPercent = Math.round((currentWaitTime / capacity) * 100);
-
-      gates.push({
-        gateId: `Gate-${ids[i]}`,
-        currentWaitTime,
-        capacity,
-        utilizationPercent,
-        zone,
-        requiresImmediateRerouting: utilizationPercent > 120, // Add explicit reroute flag
-      });
-    }
-  }
-
-  return gates;
+    return {
+      gateId: g.id,
+      currentWaitTime,
+      capacity,
+      utilizationPercent,
+      zone: g.zone,
+      requiresImmediateRerouting: utilizationPercent > 120, // Add explicit reroute flag
+    };
+  });
 }
 
 /**
@@ -116,11 +107,11 @@ export function generateTransportationHubs(): TransportationHub[] {
   ];
   
   const names = [
-    "MetLife Train Station Hub",
-    "West Parking Lot-A",
-    "North Concourse Bus Loop",
+    "Metro Trains",
+    "Match-Day Shuttles",
+    "Parking Lot Capacities",
     "East Rideshare Drop-off",
-    "South Pedestrian Boulevard",
+    "Standard Spectator Routes",
   ];
 
   return modes.map((mode, index) => {
@@ -156,11 +147,11 @@ export function generateTransportationHubs(): TransportationHub[] {
  */
 export function generateNavigationPaths(): NavigationPath[] {
   const paths = [
-    { from: "Gate-N1", to: "North Stand Seating", id: "Path-N1-Seating" },
-    { from: "Gate-S1", to: "South Stand Seating", id: "Path-S1-Seating" },
-    { from: "MetLife Train Station Hub", to: "Gate-E1", id: "Path-Train-East" },
-    { from: "West Parking Lot-A", to: "Gate-W1", id: "Path-Parking-West" },
-    { from: "East Rideshare Drop-off", to: "Gate-E2", id: "Path-Rideshare-East" },
+    { from: "Gate A", to: "North Stand Seating", id: "Standard Spectator Routes" },
+    { from: "Gate B", to: "South Stand Seating", id: "Wheelchair & Limited-Mobility Accessibility Paths" },
+    { from: "Metro Trains", to: "Gate C", id: "Path-Metro-East" },
+    { from: "Parking Lot Capacities", to: "Gate D", id: "Path-Parking-West" },
+    { from: "Match-Day Shuttles", to: "Gate B", id: "Path-Shuttles-South" },
   ];
 
   return paths.map((p) => ({
@@ -170,7 +161,7 @@ export function generateNavigationPaths(): NavigationPath[] {
     estimatedMinutes: randInt(3, 15),
     congestionPercent: randInt(10, 95),
     isAccessible: true,
-    isWheelchairAccessible: Math.random() > 0.15,
+    isWheelchairAccessible: p.id === "Wheelchair & Limited-Mobility Accessibility Paths" ? true : Math.random() > 0.5,
   }));
 }
 

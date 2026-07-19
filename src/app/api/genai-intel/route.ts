@@ -22,6 +22,9 @@ import type {
   CrowdManagementRequest,
   TranslationRequest,
   SustainabilityRequest,
+  GateData,
+  TransportationHub,
+  NavigationPath,
 } from "@/types/stadium";
 
 /* ------------------------------------------------------------------ */
@@ -271,15 +274,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           timestamp,
           cached: false,
           fallbackData: true
-        } as any,
+        } as unknown as GenAIApiResponse,
         { status: 200 }
       );
     }
 
     // --- Parse & Validate Body ---
-    let body: any;
+    interface MutablePayload {
+      module?: string;
+      crowdData?: Partial<CrowdManagementRequest>;
+      translationData?: Partial<TranslationRequest>;
+      sustainabilityData?: Partial<SustainabilityRequest>;
+    }
+    
+    let body: MutablePayload;
     try {
-      body = await request.json();
+      body = (await request.json()) as MutablePayload;
     } catch {
       body = { module: "crowd-management" };
     }
@@ -296,13 +306,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       body.crowdData.totalOccupancy = body.crowdData.totalOccupancy ?? 0;
       body.crowdData.maxCapacity = body.crowdData.maxCapacity ?? 88000;
       body.crowdData.gates = Array.isArray(body.crowdData.gates) && body.crowdData.gates.length > 0 
-        ? body.crowdData.gates.map((g: any) => ({ ...g, requiresImmediateRerouting: g.requiresImmediateRerouting ?? false }))
+        ? body.crowdData.gates.map((g: Partial<GateData>) => ({ ...g, requiresImmediateRerouting: g.requiresImmediateRerouting ?? false } as GateData))
         : [{ gateId: "Gate-Fallback", currentWaitTime: 0, capacity: 100, utilizationPercent: 0, zone: "north", requiresImmediateRerouting: false }];
       body.crowdData.transportationHubs = Array.isArray(body.crowdData.transportationHubs) 
-        ? body.crowdData.transportationHubs.map((h: any) => ({ ...h, scheduleDelayMinutes: h.scheduleDelayMinutes ?? 0 }))
+        ? body.crowdData.transportationHubs.map((h: Partial<TransportationHub>) => ({ ...h, scheduleDelayMinutes: h.scheduleDelayMinutes ?? 0 } as TransportationHub))
         : [];
       body.crowdData.navigationPaths = Array.isArray(body.crowdData.navigationPaths)
-        ? body.crowdData.navigationPaths.map((p: any) => ({ ...p, isWheelchairAccessible: p.isWheelchairAccessible ?? true, isAccessible: p.isAccessible ?? true }))
+        ? body.crowdData.navigationPaths.map((p: Partial<NavigationPath>) => ({ ...p, isWheelchairAccessible: p.isWheelchairAccessible ?? true, isAccessible: p.isAccessible ?? true } as NavigationPath))
         : [];
       body.crowdData.zoneDensity = Array.isArray(body.crowdData.zoneDensity) ? body.crowdData.zoneDensity : [];
     } else if (body.module === "translation") {
@@ -337,7 +347,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       } else if (payload.module === "sustainability") {
          mockData = { efficiencyScore: 85, estimatedSavingsKWH: 1500, tips: [{ title: "[MOCK] Optimize lighting", description: "Use LED lighting on 50% power.", impactLevel: "medium", targetZone: "Stadium" }], carbonReductionKg: 500, wasteTips: [{ title: "[MOCK] Recycle", description: "Add recycling bins.", impactLevel: "high", targetZone: "Concourses" }] };
       }
-      return NextResponse.json({ success: true, module: payload.module, data: mockData, timestamp, cached: false, fallbackData: true } as any, { status: 200 });
+      return NextResponse.json({ success: true, module: payload.module, data: mockData, timestamp, cached: false, fallbackData: true } as unknown as GenAIApiResponse, { status: 200 });
     }
 
     // --- Build Prompt ---
@@ -406,7 +416,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           timestamp,
           cached: false,
           fallbackData: true
-        } as any,
+        } as unknown as GenAIApiResponse,
         { status: 200 }
       );
     }

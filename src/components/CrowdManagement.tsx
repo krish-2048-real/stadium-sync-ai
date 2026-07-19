@@ -81,7 +81,7 @@ const GateCard = React.memo(function GateCard({ gate }: { gate: GateData }) {
     <article className={`bg-white/5 border ${requiresImmediateRerouting ? 'border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'border-white/10'} rounded-lg p-3 hover:bg-white/10 transition-colors duration-200 relative overflow-hidden`}>
       {requiresImmediateRerouting && (
         <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg z-10 animate-pulse">
-          REROUTE
+          Immediate Rerouting Action Required
         </div>
       )}
       <header className="flex items-center justify-between mb-2">
@@ -569,7 +569,7 @@ function CrowdManagementInner() {
             <span className="text-xs text-slate-500">AI-generated operational intelligence</span>
             {aiResponse.triggerImmediateRerouting && (
               <span className="ml-auto bg-red-600 text-white text-xs font-bold px-2 py-1 rounded animate-pulse">
-                🚨 IMMEDIATE EVAC/REROUTE INITIATED
+                🚨 Immediate Rerouting Action Required
               </span>
             )}
           </header>
