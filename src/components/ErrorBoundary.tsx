@@ -39,15 +39,14 @@ interface ErrorBoundaryState {
 /* ------------------------------------------------------------------ */
 
 /**
- * Catches JavaScript errors in any child component tree, logs the error
- * details, and renders a fallback UI instead of crashing the application.
+ * ErrorBoundary Component
  *
- * Usage:
- * ```tsx
- * <ErrorBoundary moduleName="Crowd Management">
- *   <CrowdManagement />
- * </ErrorBoundary>
- * ```
+ * A class-based React component that catches JavaScript errors anywhere in its
+ * child component tree, logs those errors, and displays a fallback UI instead
+ * of crashing the whole application.
+ *
+ * @class ErrorBoundary
+ * @extends {Component<ErrorBoundaryProps, ErrorBoundaryState>}
  */
 export default class ErrorBoundary extends Component<
   ErrorBoundaryProps,

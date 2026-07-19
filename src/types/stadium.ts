@@ -1,17 +1,18 @@
 /**
- * StadiumSync AI — Core TypeScript Interfaces
- *
- * Defines all data structures used across the dashboard for
- * crowd management, multilingual announcements, sustainability modules,
- * and FIFA World Cup 2026–specific operational data (transportation hubs,
- * stadium navigation, and venue crowd density intelligence).
+ * @file stadium.ts
+ * @description Core TypeScript Interfaces for StadiumSync AI
+ * Defines all data structures used across the dashboard for crowd management,
+ * multilingual announcements, sustainability modules, and FIFA World Cup 2026–specific
+ * operational data (transportation hubs, stadium navigation, venue crowd density, waste metrics).
  */
 
 /* ------------------------------------------------------------------ */
 /*  Gate & Crowd Management Types                                      */
 /* ------------------------------------------------------------------ */
 
-/** Represents a single entry gate with real-time wait data. */
+/**
+ * Represents a single entry gate with real-time wait data.
+ */
 export interface GateData {
   /** Unique gate identifier, e.g. "Gate-A1" */
   gateId: string;
@@ -23,9 +24,13 @@ export interface GateData {
   utilizationPercent: number;
   /** Geographic zone the gate belongs to */
   zone: "north" | "south" | "east" | "west";
+  /** Flag indicating if immediate re-routing of fans is required */
+  requiresImmediateRerouting?: boolean;
 }
 
-/** Summary payload sent to the AI for crowd analysis. */
+/**
+ * Summary payload sent to the AI for crowd analysis.
+ */
 export interface CrowdManagementRequest {
   /** ISO-8601 timestamp of the snapshot */
   timestamp: string;
@@ -43,7 +48,9 @@ export interface CrowdManagementRequest {
   zoneDensity?: ZoneDensityData[];
 }
 
-/** AI-generated crowd management recommendation. */
+/**
+ * AI-generated crowd management recommendation.
+ */
 export interface CrowdManagementResponse {
   /** Human-readable alert level */
   alertLevel: "low" | "moderate" | "high" | "critical";
@@ -55,9 +62,13 @@ export interface CrowdManagementResponse {
   transportationAdvisory?: string;
   /** Dynamic navigation suggestions (optional) */
   navigationGuidance?: string;
+  /** Boolean flag triggered if emergency re-routing is advised by AI */
+  triggerImmediateRerouting?: boolean;
 }
 
-/** A single staff deployment recommendation. */
+/**
+ * A single staff deployment recommendation.
+ */
 export interface DeploymentSuggestion {
   /** Target gate or zone */
   location: string;
@@ -71,7 +82,9 @@ export interface DeploymentSuggestion {
 /*  FIFA WC 2026 — Transportation Hub Types                            */
 /* ------------------------------------------------------------------ */
 
-/** Multi-modal transportation hub connected to the stadium venue. */
+/**
+ * Multi-modal transportation hub connected to the stadium venue.
+ */
 export interface TransportationHub {
   /** Hub identifier, e.g. "MetLife Train Station", "Lot-A Parking" */
   hubId: string;
@@ -87,9 +100,13 @@ export interface TransportationHub {
   status: "operational" | "congested" | "closed" | "diverting";
   /** Next scheduled arrival (ISO-8601), applicable for train/bus */
   nextArrival?: string;
+  /** Delay compared to standard schedule in minutes */
+  scheduleDelayMinutes?: number;
 }
 
-/** Dynamic navigation path within the stadium complex. */
+/**
+ * Dynamic navigation path within the stadium complex.
+ */
 export interface NavigationPath {
   /** Path identifier, e.g. "Concourse-North-A" */
   pathId: string;
@@ -103,11 +120,13 @@ export interface NavigationPath {
   congestionPercent: number;
   /** Whether the path is currently accessible */
   isAccessible: boolean;
-  /** Whether this path is wheelchair accessible */
+  /** Whether this path is explicitly designated as wheelchair/handicapped accessible */
   isWheelchairAccessible: boolean;
 }
 
-/** Per-zone crowd density data for real-time venue heatmapping. */
+/**
+ * Per-zone crowd density data for real-time venue heatmapping.
+ */
 export interface ZoneDensityData {
   /** Zone identifier, e.g. "North Upper Deck", "South Concourse" */
   zoneId: string;
@@ -127,7 +146,9 @@ export interface ZoneDensityData {
 /*  Multilingual Assistant Types                                       */
 /* ------------------------------------------------------------------ */
 
-/** Request to translate a PA announcement. */
+/**
+ * Request to translate a PA announcement.
+ */
 export interface TranslationRequest {
   /** Original announcement text */
   sourceText: string;
@@ -139,7 +160,9 @@ export interface TranslationRequest {
   context?: "emergency" | "general" | "wayfinding" | "event";
 }
 
-/** AI-generated translation result. */
+/**
+ * AI-generated translation result.
+ */
 export interface TranslationResponse {
   /** Original text echoed back */
   originalText: string;
@@ -147,7 +170,9 @@ export interface TranslationResponse {
   translations: TranslatedText[];
 }
 
-/** A single translated text block. */
+/**
+ * A single translated text block.
+ */
 export interface TranslatedText {
   /** ISO 639-1 language code */
   language: string;
@@ -158,10 +183,12 @@ export interface TranslatedText {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Sustainability / Energy Module Types                               */
+/*  Sustainability / Energy & Waste Module Types                       */
 /* ------------------------------------------------------------------ */
 
-/** Simulated power grid data for the stadium. */
+/**
+ * Simulated power grid data for the stadium.
+ */
 export interface EnergyGridData {
   /** Zone identifier */
   zone: string;
@@ -177,21 +204,44 @@ export interface EnergyGridData {
   lightingPercent: number;
 }
 
-/** Request for sustainability analysis. */
+/**
+ * Real-time waste and recycling metrics for a given zone.
+ */
+export interface WasteMetrics {
+  /** Total waste generated in kg */
+  totalWasteKg: number;
+  /** Mass of waste successfully recycled/composted in kg */
+  recycledKg: number;
+  /** Waste sent to landfill in kg */
+  landfillKg: number;
+  /** Diversion rate percentage (recycledKg / totalWasteKg * 100) */
+  diversionRatePercent: number;
+}
+
+/**
+ * Request for sustainability analysis including energy and waste.
+ */
 export interface SustainabilityRequest {
   /** ISO-8601 timestamp */
   timestamp: string;
   /** Weather conditions affecting energy use */
   weatherConditions: {
+    /** Ambient temperature in Celsius */
     temperatureCelsius: number;
+    /** Relative humidity percentage */
     humidity: number;
+    /** True if currently raining */
     isRaining: boolean;
   };
   /** Per-zone energy grid data */
   grids: EnergyGridData[];
+  /** Aggregate stadium waste metrics */
+  wasteMetrics?: WasteMetrics;
 }
 
-/** AI-generated sustainability tips. */
+/**
+ * AI-generated sustainability tips.
+ */
 export interface SustainabilityResponse {
   /** Overall energy efficiency score (0-100) */
   efficiencyScore: number;
@@ -199,11 +249,15 @@ export interface SustainabilityResponse {
   estimatedSavingsKWH: number;
   /** Actionable tips */
   tips: EnergyTip[];
-  /** Carbon footprint reduction estimate in kg CO₂ */
+  /** Carbon footprint reduction estimate in kg CO₂ from energy savings */
   carbonReductionKg: number;
+  /** Actionable tips specifically for improving waste diversion */
+  wasteTips?: EnergyTip[];
 }
 
-/** A single energy efficiency tip. */
+/**
+ * A single sustainability efficiency tip.
+ */
 export interface EnergyTip {
   /** Short title */
   title: string;
@@ -219,17 +273,24 @@ export interface EnergyTip {
 /*  Unified API Types                                                  */
 /* ------------------------------------------------------------------ */
 
-/** Discriminated union for GenAI API request body. */
+/**
+ * Discriminated union for GenAI API request body.
+ */
 export interface GenAIRequestPayload {
   /** Which AI module to invoke */
   module: "crowd-management" | "translation" | "sustainability";
   /** Module-specific data — exactly one should be provided */
   crowdData?: CrowdManagementRequest;
+  /** Module-specific data for translation */
   translationData?: TranslationRequest;
+  /** Module-specific data for sustainability */
   sustainabilityData?: SustainabilityRequest;
 }
 
-/** Standardised API response wrapper. */
+/**
+ * Standardised API response wrapper.
+ * @template T - The type of the payload data
+ */
 export interface GenAIApiResponse<T = unknown> {
   /** Whether the call succeeded */
   success: boolean;

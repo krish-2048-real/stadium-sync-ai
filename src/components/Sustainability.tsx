@@ -1,10 +1,12 @@
 /**
- * Sustainability Component
+ * @file Sustainability.tsx
+ * @description Sustainability Component
  *
- * Displays simulated energy grid data and AI-generated sustainability tips,
- * energy optimization ratings, carbon footprints, and grid statuses.
+ * Displays simulated energy grid data, stadium waste & recycling metrics, and AI-generated
+ * sustainability tips, energy optimization ratings, carbon footprints, and grid statuses.
  *
  * Optimised with React.useMemo, React.useCallback, and strict null/undefined safety.
+ * Implements semantic HTML and exhaustive JSDoc typing.
  */
 
 "use client";
@@ -15,6 +17,7 @@ import type {
   SustainabilityResponse,
   EnergyGridData,
   EnergyTip,
+  WasteMetrics,
   GenAIApiResponse,
 } from "@/types/stadium";
 import { generateSustainabilityData } from "@/lib/simulatedData";
@@ -26,6 +29,9 @@ import ErrorBoundary from "./ErrorBoundary";
 
 /**
  * Renders a single energy grid zone card.
+ * @param {Object} props - Component properties
+ * @param {EnergyGridData} props.grid - Grid data for a specific zone
+ * @returns {React.ReactElement} Grid card UI
  */
 const GridCard = React.memo(function GridCard({ grid }: { grid: EnergyGridData }) {
   const g = grid ?? {};
@@ -40,8 +46,8 @@ const GridCard = React.memo(function GridCard({ grid }: { grid: EnergyGridData }
   const ratio = Math.round((currentConsumptionKW / baselineKW) * 100);
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/10 transition-colors duration-200">
-      <div className="flex items-center justify-between mb-3">
+    <article className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/10 transition-colors duration-200">
+      <header className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-semibold text-white">{zone}</h4>
         <span
           className={`px-2 py-0.5 text-xs font-medium rounded-full ${
@@ -54,7 +60,7 @@ const GridCard = React.memo(function GridCard({ grid }: { grid: EnergyGridData }
         >
           HVAC: {hvacStatus}
         </span>
-      </div>
+      </header>
 
       <div className="space-y-2 text-xs text-slate-300">
         <div className="flex justify-between">
@@ -96,12 +102,15 @@ const GridCard = React.memo(function GridCard({ grid }: { grid: EnergyGridData }
           />
         </div>
       </div>
-    </div>
+    </article>
   );
 });
 
 /**
  * Circular efficiency score gauge display.
+ * @param {Object} props - Component properties
+ * @param {number} props.score - 0-100 efficiency score
+ * @returns {React.ReactElement} Gauge UI
  */
 const EfficiencyGauge = React.memo(function EfficiencyGauge({ score }: { score: number }) {
   const s = score ?? 0;
@@ -170,19 +179,27 @@ const EfficiencyGauge = React.memo(function EfficiencyGauge({ score }: { score: 
 });
 
 /**
- * Renders a single energy efficiency tip.
+ * Renders a single energy efficiency or waste reduction tip.
+ * @param {Object} props - Component properties
+ * @param {EnergyTip} props.tip - The tip to render
+ * @param {boolean} [props.isWaste=false] - Whether this is a waste reduction tip
+ * @returns {React.ReactElement} Tip UI card
  */
-const EnergyTipCard = React.memo(function EnergyTipCard({ tip }: { tip: EnergyTip }) {
+const EnergyTipCard = React.memo(function EnergyTipCard({ tip, isWaste = false }: { tip: EnergyTip; isWaste?: boolean }) {
   const t = tip ?? {};
   const title = t.title ?? "General Tip";
   const targetZone = t.targetZone ?? "Stadium Complex";
   const impactLevel = t.impactLevel ?? "medium";
-  const description = t.description ?? "Optimize power baseline usage.";
+  const description = t.description ?? "Optimize baseline usage.";
+
+  const icon = isWaste ? "♻️" : "💡";
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/8 transition-colors">
-      <div className="flex items-center justify-between mb-1">
-        <h4 className="text-sm font-medium text-white">{title}</h4>
+    <article className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/8 transition-colors">
+      <header className="flex items-center justify-between mb-1">
+        <h4 className="text-sm font-medium text-white flex items-center gap-2">
+          <span>{icon}</span> {title}
+        </h4>
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500">{targetZone}</span>
           <span
@@ -197,16 +214,70 @@ const EnergyTipCard = React.memo(function EnergyTipCard({ tip }: { tip: EnergyTi
             {impactLevel}
           </span>
         </div>
-      </div>
-      <p className="text-xs text-slate-400">{description}</p>
-    </div>
+      </header>
+      <p className="text-xs text-slate-400 mt-2">{description}</p>
+    </article>
   );
 });
+
+/**
+ * Display for waste and recycling metrics.
+ * @param {Object} props - Component properties
+ * @param {WasteMetrics} props.metrics - The waste tracking metrics
+ * @returns {React.ReactElement} Waste metrics dashboard section
+ */
+const WasteMetricsDisplay = React.memo(function WasteMetricsDisplay({ metrics }: { metrics: WasteMetrics }) {
+  const m = metrics ?? {};
+  const total = m.totalWasteKg ?? 0;
+  const recycled = m.recycledKg ?? 0;
+  const landfill = m.landfillKg ?? 0;
+  const diversion = m.diversionRatePercent ?? 0;
+
+  return (
+    <article className="bg-slate-950/50 border border-white/10 rounded-lg p-4 mb-6">
+      <header className="mb-4">
+        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+          🗑️ Waste & Recycling Dashboard
+        </h3>
+        <p className="text-xs text-slate-400 mt-1">Real-time stadium refuse tracking vs diversion goals.</p>
+      </header>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-white/5 rounded-lg p-3 border border-white/5">
+          <p className="text-xs text-slate-400">Total Waste</p>
+          <p className="text-lg font-bold text-white">{total.toLocaleString()} kg</p>
+        </div>
+        <div className="bg-white/5 rounded-lg p-3 border border-emerald-500/20">
+          <p className="text-xs text-slate-400">Recycled / Compost</p>
+          <p className="text-lg font-bold text-emerald-400">{recycled.toLocaleString()} kg</p>
+        </div>
+        <div className="bg-white/5 rounded-lg p-3 border border-red-500/20">
+          <p className="text-xs text-slate-400">Landfill</p>
+          <p className="text-lg font-bold text-red-400">{landfill.toLocaleString()} kg</p>
+        </div>
+        <div className="bg-white/5 rounded-lg p-3 border border-blue-500/20 relative overflow-hidden">
+          <p className="text-xs text-slate-400 relative z-10">Diversion Rate</p>
+          <p className={`text-lg font-bold relative z-10 ${diversion > 50 ? 'text-emerald-400' : 'text-amber-400'}`}>
+            {diversion}%
+          </p>
+          <div 
+            className="absolute bottom-0 left-0 h-1 bg-blue-500/50" 
+            style={{ width: `${diversion}%` }} 
+          />
+        </div>
+      </div>
+    </article>
+  );
+});
+
 
 /* ------------------------------------------------------------------ */
 /*  Inner Sustainability Component                                     */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Core UI implementation for Sustainability.
+ * @returns {React.ReactElement} Main Sustainability section
+ */
 function SustainabilityInner() {
   const [energyData, setEnergyData] = useState<SustainabilityRequest | null>(null);
   const [aiResponse, setAiResponse] = useState<SustainabilityResponse | null>(null);
@@ -249,16 +320,22 @@ function SustainabilityInner() {
 
   // Memoised sub-lists to avoid unnecessary mapping loops on every render
   const renderedGridCards = useMemo(() => {
-    return energyData?.grids?.map((grid) => (
+    return (energyData?.grids ?? []).map((grid) => (
       <GridCard key={grid.zone} grid={grid} />
-    )) ?? null;
+    ));
   }, [energyData?.grids]);
 
   const renderedTips = useMemo(() => {
-    return aiResponse?.tips?.map((tip, idx) => (
+    return (aiResponse?.tips ?? []).map((tip, idx) => (
       <EnergyTipCard key={idx} tip={tip} />
-    )) ?? null;
+    ));
   }, [aiResponse?.tips]);
+
+  const renderedWasteTips = useMemo(() => {
+    return (aiResponse?.wasteTips ?? []).map((tip, idx) => (
+      <EnergyTipCard key={idx} tip={tip} isWaste={true} />
+    ));
+  }, [aiResponse?.wasteTips]);
 
   return (
     <section
@@ -266,7 +343,7 @@ function SustainabilityInner() {
       className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-white/10 rounded-2xl p-6 shadow-xl"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <header className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-lg shadow-lg shadow-green-500/20">
             🌱
@@ -279,7 +356,7 @@ function SustainabilityInner() {
               Sustainability Monitor
             </h2>
             <p className="text-xs text-slate-400">
-              Energy efficiency analysis & carbon reduction AI
+              Energy efficiency, Waste Diversion & Carbon reduction AI
             </p>
           </div>
         </div>
@@ -314,10 +391,10 @@ function SustainabilityInner() {
               Analyzing…
             </span>
           ) : (
-            "⚡ Analyze Energy"
+            "⚡ Analyze Sustainability"
           )}
         </button>
-      </div>
+      </header>
 
       {/* Weather Conditions */}
       {energyData && (
@@ -328,11 +405,21 @@ function SustainabilityInner() {
         </div>
       )}
 
+      {/* Waste Metrics */}
+      {energyData?.wasteMetrics && (
+        <WasteMetricsDisplay metrics={energyData.wasteMetrics} />
+      )}
+
       {/* Energy Grid Cards */}
       {energyData && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          {renderedGridCards}
-        </div>
+        <section className="mb-6">
+          <header className="mb-3">
+             <h3 className="text-sm font-semibold text-slate-300">Energy Grid Activity</h3>
+          </header>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {renderedGridCards}
+          </div>
+        </section>
       )}
 
       {/* Error */}
@@ -347,41 +434,56 @@ function SustainabilityInner() {
 
       {/* AI Response */}
       {aiResponse && (
-        <div
+        <section
           aria-live="polite"
-          className="space-y-4 border-t border-white/10 pt-4"
+          className="space-y-6 border-t border-white/10 pt-4"
         >
           {/* Headline Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="flex justify-center">
               <EfficiencyGauge score={aiResponse.efficiencyScore ?? 0} />
             </div>
-            <div className="flex flex-col items-center justify-center bg-white/5 rounded-lg p-4">
+            <article className="flex flex-col items-center justify-center bg-white/5 rounded-lg p-4 border border-white/5">
               <span className="text-2xl font-bold text-emerald-400">
-                {aiResponse.estimatedSavingsKWH ?? 0}
+                {(aiResponse.estimatedSavingsKWH ?? 0).toLocaleString()}
               </span>
-              <span className="text-xs text-slate-400">kWh Savings</span>
-            </div>
-            <div className="flex flex-col items-center justify-center bg-white/5 rounded-lg p-4">
+              <span className="text-xs text-slate-400">Est. kWh Savings</span>
+            </article>
+            <article className="flex flex-col items-center justify-center bg-white/5 rounded-lg p-4 border border-white/5">
               <span className="text-2xl font-bold text-green-400">
-                {aiResponse.carbonReductionKg ?? 0}
+                {(aiResponse.carbonReductionKg ?? 0).toLocaleString()}
               </span>
               <span className="text-xs text-slate-400">kg CO₂ Reduced</span>
-            </div>
+            </article>
           </div>
 
-          {/* Tips */}
-          {aiResponse.tips?.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-slate-300 mb-2">
-                💡 Energy Efficiency Tips
-              </h3>
-              <div className="space-y-2">
-                {renderedTips}
-              </div>
-            </div>
-          )}
-        </div>
+          {/* Tips Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Energy Tips */}
+            {(aiResponse.tips ?? []).length > 0 && (
+              <section>
+                <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                  💡 Energy Efficiency Protocols
+                </h3>
+                <div className="space-y-2">
+                  {renderedTips}
+                </div>
+              </section>
+            )}
+
+            {/* Waste Tips */}
+            {(aiResponse.wasteTips ?? []).length > 0 && (
+              <section>
+                <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                  ♻️ Waste Diversion Protocols
+                </h3>
+                <div className="space-y-2">
+                  {renderedWasteTips}
+                </div>
+              </section>
+            )}
+          </div>
+        </section>
       )}
 
       {/* Empty State */}
@@ -389,8 +491,8 @@ function SustainabilityInner() {
         <div className="text-center py-8 text-slate-500">
           <p className="text-lg mb-1">🔋 No data loaded</p>
           <p className="text-sm">
-            Click &quot;Analyze Energy&quot; to generate simulated power grid data and
-            get AI-powered sustainability insights.
+            Click &quot;Analyze Sustainability&quot; to generate simulated power grid & waste data and
+            get AI-powered optimization insights.
           </p>
         </div>
       )}
@@ -400,8 +502,9 @@ function SustainabilityInner() {
 
 /**
  * Main export wrapping Sustainability with ErrorBoundary protection.
+ * @returns {React.ReactElement} The wrapped Sustainability component
  */
-export default function Sustainability() {
+export default function Sustainability(): React.ReactElement {
   return (
     <ErrorBoundary moduleName="Sustainability Monitor">
       <SustainabilityInner />

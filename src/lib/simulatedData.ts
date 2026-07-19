@@ -1,10 +1,12 @@
 /**
- * Simulated Stadium Data Generator
+ * @file simulatedData.ts
+ * @description Simulated Stadium Data Generator
  *
  * Produces realistic-looking operational data for the StadiumSync AI dashboard.
  * In production, these would come from IoT sensors, ticketing systems, and BMS APIs.
  *
  * Optimised for performance using flat maps, single-loop iteration, and direct object allocation.
+ * Includes complete JSDoc coverage.
  */
 
 import type {
@@ -15,6 +17,7 @@ import type {
   TransportationHub,
   NavigationPath,
   ZoneDensityData,
+  WasteMetrics,
 } from "@/types/stadium";
 
 /* ------------------------------------------------------------------ */
@@ -40,8 +43,9 @@ const MAX_CAPACITY = 88_000; // FIFA WC 2026 MetLife-scale stadium
  * Returns a random integer between min and max (inclusive).
  * Uses bitwise OR for fast truncation.
  *
- * @param min - Lower bound
- * @param max - Upper bound
+ * @param {number} min - Lower bound
+ * @param {number} max - Upper bound
+ * @returns {number} A random integer
  */
 function randInt(min: number, max: number): number {
   return (Math.random() * (max - min + 1) + min) | 0;
@@ -50,8 +54,9 @@ function randInt(min: number, max: number): number {
 /**
  * Returns a random float rounded to 1 decimal place.
  *
- * @param min - Lower bound
- * @param max - Upper bound
+ * @param {number} min - Lower bound
+ * @param {number} max - Upper bound
+ * @returns {number} A random float rounded to 1 decimal place
  */
 function randFloat(min: number, max: number): number {
   return Math.round((Math.random() * (max - min) + min) * 10) / 10;
@@ -65,7 +70,7 @@ function randFloat(min: number, max: number): number {
  * Generates simulated gate data for every entry point.
  * Optimised with pre-allocated array size and flat mapping.
  *
- * @returns Array of GateData objects
+ * @returns {GateData[]} Array of generated GateData objects
  */
 export function generateGateData(): GateData[] {
   const gates: GateData[] = [];
@@ -87,6 +92,7 @@ export function generateGateData(): GateData[] {
         capacity,
         utilizationPercent,
         zone,
+        requiresImmediateRerouting: utilizationPercent > 120, // Add explicit reroute flag
       });
     }
   }
@@ -98,7 +104,7 @@ export function generateGateData(): GateData[] {
  * Generates simulated multi-modal transportation hubs for FIFA World Cup 2026.
  * Includes train stations, parking lots, rideshare zones, and pedestrian walks.
  *
- * @returns Array of TransportationHub objects
+ * @returns {TransportationHub[]} Array of generated TransportationHub objects
  */
 export function generateTransportationHubs(): TransportationHub[] {
   const modes: ("train" | "bus" | "parking" | "rideshare" | "pedestrian")[] = [
@@ -128,6 +134,7 @@ export function generateTransportationHubs(): TransportationHub[] {
         : "operational";
 
     const nextArrival = new Date(Date.now() + randInt(2, 15) * 60000).toISOString();
+    const isScheduled = mode === "train" || mode === "bus";
 
     return {
       hubId: names[index],
@@ -136,7 +143,8 @@ export function generateTransportationHubs(): TransportationHub[] {
       maxCapacity,
       estimatedWaitMinutes: randInt(2, 45),
       status,
-      nextArrival: mode === "train" || mode === "bus" ? nextArrival : undefined,
+      nextArrival: isScheduled ? nextArrival : undefined,
+      scheduleDelayMinutes: isScheduled ? randInt(0, 20) : undefined,
     };
   });
 }
@@ -144,7 +152,7 @@ export function generateTransportationHubs(): TransportationHub[] {
 /**
  * Generates simulated navigation paths for stadium crowd routing.
  *
- * @returns Array of NavigationPath objects
+ * @returns {NavigationPath[]} Array of generated NavigationPath objects
  */
 export function generateNavigationPaths(): NavigationPath[] {
   const paths = [
@@ -169,7 +177,7 @@ export function generateNavigationPaths(): NavigationPath[] {
 /**
  * Generates simulated zone density for heatmap analysis.
  *
- * @returns Array of ZoneDensityData objects
+ * @returns {ZoneDensityData[]} Array of generated ZoneDensityData objects
  */
 export function generateZoneDensity(): ZoneDensityData[] {
   const zones = [
@@ -201,7 +209,7 @@ export function generateZoneDensity(): ZoneDensityData[] {
 /**
  * Builds a complete crowd management request payload.
  *
- * @returns CrowdManagementRequest containing all simulation sources
+ * @returns {CrowdManagementRequest} CrowdManagementRequest containing all simulation sources
  */
 export function generateCrowdData(): CrowdManagementRequest {
   const gates = generateGateData();
@@ -228,7 +236,7 @@ export function generateCrowdData(): CrowdManagementRequest {
 /**
  * Generates simulated energy grid data for each zone.
  *
- * @returns Array of EnergyGridData objects
+ * @returns {EnergyGridData[]} Array of generated EnergyGridData objects
  */
 export function generateEnergyGrids(): EnergyGridData[] {
   const zonesLen = ZONES.length;
@@ -250,9 +258,28 @@ export function generateEnergyGrids(): EnergyGridData[] {
 }
 
 /**
+ * Generates simulated waste metrics for the stadium.
+ *
+ * @returns {WasteMetrics} Simulated WasteMetrics object
+ */
+export function generateWasteMetrics(): WasteMetrics {
+  const recycledKg = randInt(500, 2500);
+  const landfillKg = randInt(1000, 4000);
+  const totalWasteKg = recycledKg + landfillKg;
+  const diversionRatePercent = Math.round((recycledKg / totalWasteKg) * 100);
+
+  return {
+    totalWasteKg,
+    recycledKg,
+    landfillKg,
+    diversionRatePercent,
+  };
+}
+
+/**
  * Builds a complete sustainability request payload.
  *
- * @returns SustainabilityRequest containing weather and grid metrics
+ * @returns {SustainabilityRequest} SustainabilityRequest containing weather and grid metrics
  */
 export function generateSustainabilityData(): SustainabilityRequest {
   return {
@@ -263,6 +290,7 @@ export function generateSustainabilityData(): SustainabilityRequest {
       isRaining: Math.random() > 0.75,
     },
     grids: generateEnergyGrids(),
+    wasteMetrics: generateWasteMetrics(),
   };
 }
 

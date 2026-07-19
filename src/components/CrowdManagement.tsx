@@ -1,11 +1,13 @@
 /**
- * CrowdManagement Component
+ * @file CrowdManagement.tsx
+ * @description CrowdManagement Component
  *
  * Displays real-time gate utilization data, dynamic stadium navigation paths,
  * multi-modal transportation hubs (train arrivals/parking lots), real-time venue crowd density,
  * and AI-generated FIFA World Cup 2026 operations intelligence.
  *
  * Optimised with React.useMemo, React.useCallback, and strict null/undefined safety.
+ * Implements semantic HTML and exhaustive JSDoc typing.
  */
 
 "use client";
@@ -29,6 +31,9 @@ import ErrorBoundary from "./ErrorBoundary";
 
 /**
  * Visual indicator for gate utilization level.
+ * @param {Object} props - Component properties
+ * @param {number} props.percent - Utilization percentage
+ * @returns {React.ReactElement} Badge UI element
  */
 const UtilizationBadge = React.memo(function UtilizationBadge({ percent }: { percent: number }) {
   const p = percent ?? 0;
@@ -59,6 +64,9 @@ const UtilizationBadge = React.memo(function UtilizationBadge({ percent }: { per
 
 /**
  * Renders a single gate data card.
+ * @param {Object} props - Component properties
+ * @param {GateData} props.gate - Real-time gate telemetry
+ * @returns {React.ReactElement} Card UI element
  */
 const GateCard = React.memo(function GateCard({ gate }: { gate: GateData }) {
   const g = gate ?? {};
@@ -67,15 +75,21 @@ const GateCard = React.memo(function GateCard({ gate }: { gate: GateData }) {
   const capacity = g.capacity ?? 1;
   const utilizationPercent = g.utilizationPercent ?? 0;
   const zone = g.zone ?? "general";
+  const requiresImmediateRerouting = g.requiresImmediateRerouting ?? false;
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors duration-200">
-      <div className="flex items-center justify-between mb-2">
+    <article className={`bg-white/5 border ${requiresImmediateRerouting ? 'border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'border-white/10'} rounded-lg p-3 hover:bg-white/10 transition-colors duration-200 relative overflow-hidden`}>
+      {requiresImmediateRerouting && (
+        <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg z-10 animate-pulse">
+          REROUTE
+        </div>
+      )}
+      <header className="flex items-center justify-between mb-2">
         <h4 className="text-sm font-semibold text-white">{gateId}</h4>
         <span className="text-xs text-slate-400 uppercase tracking-wide">
           {zone}
         </span>
-      </div>
+      </header>
       <div className="space-y-1">
         <div className="flex justify-between text-xs text-slate-300">
           <span>Wait Time</span>
@@ -106,12 +120,15 @@ const GateCard = React.memo(function GateCard({ gate }: { gate: GateData }) {
         </div>
         <UtilizationBadge percent={utilizationPercent} />
       </div>
-    </div>
+    </article>
   );
 });
 
 /**
  * Renders alert level badge for the AI response.
+ * @param {Object} props - Component properties
+ * @param {string} props.level - Alert priority level
+ * @returns {React.ReactElement} Badge UI element
  */
 const AlertLevelBadge = React.memo(function AlertLevelBadge({ level }: { level: string }) {
   const l = level ?? "moderate";
@@ -137,6 +154,9 @@ const AlertLevelBadge = React.memo(function AlertLevelBadge({ level }: { level: 
 
 /**
  * Renders a single transportation hub status card.
+ * @param {Object} props - Component properties
+ * @param {TransportationHub} props.hub - Hub telemetry object
+ * @returns {React.ReactElement} Card UI element
  */
 const TransportationHubCard = React.memo(function TransportationHubCard({
   hub,
@@ -150,6 +170,7 @@ const TransportationHubCard = React.memo(function TransportationHubCard({
   const maxCapacity = h.maxCapacity ?? 1;
   const status = h.status ?? "operational";
   const estimatedWait = h.estimatedWaitMinutes ?? 0;
+  const scheduleDelay = h.scheduleDelayMinutes ?? 0;
 
   let statusColor = "text-emerald-400 bg-emerald-500/10";
   if (status === "congested") statusColor = "text-amber-400 bg-amber-500/10";
@@ -157,13 +178,13 @@ const TransportationHubCard = React.memo(function TransportationHubCard({
   if (status === "diverting") statusColor = "text-purple-400 bg-purple-500/10";
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors duration-200">
-      <div className="flex items-center justify-between mb-2">
+    <article className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors duration-200">
+      <header className="flex items-center justify-between mb-2">
         <h4 className="text-sm font-semibold text-white">{hubId}</h4>
         <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${statusColor}`}>
           {status}
         </span>
-      </div>
+      </header>
       <div className="space-y-1 text-xs text-slate-300">
         <div className="flex justify-between">
           <span>Transit Mode</span>
@@ -180,18 +201,28 @@ const TransportationHubCard = React.memo(function TransportationHubCard({
           <span className="font-mono">{estimatedWait} min</span>
         </div>
         {h.nextArrival && (
-          <div className="flex justify-between text-[10px] text-slate-400 border-t border-white/5 pt-1 mt-1">
+          <div className="flex justify-between items-center text-[10px] text-slate-400 border-t border-white/5 pt-1 mt-1">
             <span>Next Arrival</span>
-            <span>{new Date(h.nextArrival).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+            <div className="flex items-center gap-2">
+              <span className={scheduleDelay > 5 ? "text-red-400 line-through" : ""}>
+                {new Date(h.nextArrival).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+              {scheduleDelay > 0 && (
+                <span className="text-red-400 font-bold">+{scheduleDelay}m</span>
+              )}
+            </div>
           </div>
         )}
       </div>
-    </div>
+    </article>
   );
 });
 
 /**
  * Renders a single dynamic navigation path card.
+ * @param {Object} props - Component properties
+ * @param {NavigationPath} props.path - Navigation route properties
+ * @returns {React.ReactElement} Card UI element
  */
 const NavigationPathCard = React.memo(function NavigationPathCard({
   path,
@@ -199,24 +230,32 @@ const NavigationPathCard = React.memo(function NavigationPathCard({
   path: NavigationPath;
 }) {
   const p = path ?? {};
-  const from = p.from ?? "";
-  const to = p.to ?? "";
+  const from = p.from ?? "Unknown Origin";
+  const to = p.to ?? "Unknown Destination";
   const est = p.estimatedMinutes ?? 0;
   const congestion = p.congestionPercent ?? 0;
+  const isAccessible = p.isAccessible ?? true;
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors duration-200">
-      <div className="flex items-center justify-between mb-2">
+    <article className={`bg-white/5 border ${!isAccessible ? 'border-red-500/50 opacity-75' : 'border-white/10'} rounded-lg p-3 hover:bg-white/10 transition-colors duration-200`}>
+      <header className="flex items-center justify-between mb-2">
         <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
           {p.pathId ?? "Path"}
         </span>
-        {p.isWheelchairAccessible && (
-          <span className="text-xs" title="Wheelchair Accessible">
-            ♿
-          </span>
-        )}
-      </div>
-      <div className="text-sm font-medium text-white mb-2 truncate">
+        <div className="flex gap-1">
+          {p.isWheelchairAccessible && (
+            <span className="text-xs bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded" title="Wheelchair Accessible Route" aria-label="Wheelchair Accessible">
+              ♿
+            </span>
+          )}
+          {!isAccessible && (
+            <span className="text-[10px] font-bold bg-red-500/20 text-red-300 px-1.5 py-0.5 rounded uppercase">
+              Blocked
+            </span>
+          )}
+        </div>
+      </header>
+      <div className="text-sm font-medium text-white mb-2 truncate" aria-label={`From ${from} to ${to}`}>
         {from} ➔ {to}
       </div>
       <div className="space-y-1 text-xs text-slate-300">
@@ -239,12 +278,15 @@ const NavigationPathCard = React.memo(function NavigationPathCard({
           />
         </div>
       </div>
-    </div>
+    </article>
   );
 });
 
 /**
  * Renders a single zone density heatmap row.
+ * @param {Object} props - Component properties
+ * @param {ZoneDensityData} props.density - Zone density heatmap data
+ * @returns {React.ReactElement} Row UI element
  */
 const ZoneDensityRow = React.memo(function ZoneDensityRow({
   density,
@@ -264,14 +306,14 @@ const ZoneDensityRow = React.memo(function ZoneDensityRow({
   else if (percent > 60) statusColor = "text-amber-400";
 
   return (
-    <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg p-3">
+    <article className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg p-3">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-white truncate">{zoneId}</span>
+        <header className="flex items-center gap-2">
+          <h4 className="text-sm font-semibold text-white truncate">{zoneId}</h4>
           <span className="text-[10px] px-1.5 py-0.5 bg-slate-800 text-slate-400 uppercase rounded">
             {type}
           </span>
-        </div>
+        </header>
         <p className="text-xs text-slate-400 mt-1">
           Count: {count.toLocaleString()} / {max.toLocaleString()}
         </p>
@@ -284,7 +326,7 @@ const ZoneDensityRow = React.memo(function ZoneDensityRow({
           </span>
         </div>
       </div>
-    </div>
+    </article>
   );
 });
 
@@ -292,6 +334,10 @@ const ZoneDensityRow = React.memo(function ZoneDensityRow({
 /*  Inner Operational Component                                        */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Core UI implementation for CrowdManagement.
+ * @returns {React.ReactElement} Main CrowdManagement section
+ */
 function CrowdManagementInner() {
   const [crowdData, setCrowdData] = useState<CrowdManagementRequest | null>(null);
   const [aiResponse, setAiResponse] = useState<CrowdManagementResponse | null>(null);
@@ -392,7 +438,7 @@ function CrowdManagementInner() {
       className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-white/10 rounded-2xl p-6 shadow-xl"
     >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-lg shadow-lg shadow-blue-500/20">
             👥
@@ -443,14 +489,14 @@ function CrowdManagementInner() {
             "🔍 Analyze Gates & Hubs"
           )}
         </button>
-      </div>
+      </header>
 
       {/* Primary Grid Layout */}
       {crowdData && (
         <div className="space-y-6">
           {/* Gate status row */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
+          <section>
+            <header className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-slate-300">
                 Gate Status — {crowdData.gates?.length ?? 0} gates monitored
               </h3>
@@ -458,43 +504,43 @@ function CrowdManagementInner() {
                 Occupancy: {(crowdData.totalOccupancy ?? 0).toLocaleString()} /{" "}
                 {(crowdData.maxCapacity ?? 88000).toLocaleString()}
               </span>
-            </div>
+            </header>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {renderedGates}
             </div>
-          </div>
+          </section>
 
           {/* FIFA WC 2026 Core extensions */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Transit Hubs */}
-            <div className="bg-slate-950/40 border border-white/5 rounded-xl p-4">
+            <section className="bg-slate-950/40 border border-white/5 rounded-xl p-4">
               <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
                 🚆 Transportation Hubs
               </h3>
               <div className="space-y-3">
                 {renderedHubs}
               </div>
-            </div>
+            </section>
 
             {/* Navigation paths */}
-            <div className="bg-slate-950/40 border border-white/5 rounded-xl p-4">
+            <section className="bg-slate-950/40 border border-white/5 rounded-xl p-4">
               <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
                 🗺️ Stadium Navigation Paths
               </h3>
               <div className="space-y-3">
                 {renderedPaths}
               </div>
-            </div>
+            </section>
 
             {/* Zone Density */}
-            <div className="bg-slate-950/40 border border-white/5 rounded-xl p-4">
+            <section className="bg-slate-950/40 border border-white/5 rounded-xl p-4">
               <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
                 🔥 Crowd Density Heatmap
               </h3>
               <div className="space-y-3">
                 {renderedDensity}
               </div>
-            </div>
+            </section>
           </div>
         </div>
       )}
@@ -511,53 +557,60 @@ function CrowdManagementInner() {
 
       {/* AI Intelligence Output */}
       {aiResponse && (
-        <div
+        <section
           aria-live="polite"
-          className="space-y-4 border-t border-white/10 pt-4 mt-6"
+          className={`space-y-4 border-t pt-4 mt-6 ${
+            aiResponse.triggerImmediateRerouting ? 'border-red-500/50' : 'border-white/10'
+          }`}
           data-testid="crowd-ai-response"
         >
-          <div className="flex items-center gap-3">
+          <header className="flex items-center gap-3">
             <AlertLevelBadge level={aiResponse.alertLevel ?? "moderate"} />
             <span className="text-xs text-slate-500">AI-generated operational intelligence</span>
-          </div>
+            {aiResponse.triggerImmediateRerouting && (
+              <span className="ml-auto bg-red-600 text-white text-xs font-bold px-2 py-1 rounded animate-pulse">
+                🚨 IMMEDIATE EVAC/REROUTE INITIATED
+              </span>
+            )}
+          </header>
 
-          <div className="bg-white/5 rounded-lg p-4 space-y-3 border border-white/10">
+          <article className="bg-white/5 rounded-lg p-4 space-y-3 border border-white/10">
             <h4 className="text-sm font-bold text-cyan-400">Situation Analysis</h4>
             <p className="text-sm text-slate-300 leading-relaxed">
               {aiResponse.analysis ?? "No situation analysis available."}
             </p>
-          </div>
+          </article>
 
           {aiResponse.transportationAdvisory && (
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+            <article className="bg-white/5 rounded-lg p-4 border border-white/10">
               <h4 className="text-sm font-bold text-purple-400 mb-1">Transit Advisory</h4>
               <p className="text-sm text-slate-300 leading-relaxed">
                 {aiResponse.transportationAdvisory}
               </p>
-            </div>
+            </article>
           )}
 
           {aiResponse.navigationGuidance && (
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-              <h4 className="text-sm font-bold text-pink-400 mb-1">Navigation Redirection guidance</h4>
+            <article className="bg-white/5 rounded-lg p-4 border border-white/10">
+              <h4 className="text-sm font-bold text-pink-400 mb-1">Navigation Redirection Guidance</h4>
               <p className="text-sm text-slate-300 leading-relaxed">
                 {aiResponse.navigationGuidance}
               </p>
-            </div>
+            </article>
           )}
 
           {/* Deployment Suggestions */}
-          {aiResponse.deploymentSuggestions?.length > 0 && (
-            <div>
+          {(aiResponse.deploymentSuggestions ?? []).length > 0 && (
+            <section>
               <h3 className="text-sm font-semibold text-slate-300 mb-2">
                 📋 Staff Deployment Recommendations
               </h3>
               <div className="space-y-2">
                 {renderedSuggestions}
               </div>
-            </div>
+            </section>
           )}
-        </div>
+        </section>
       )}
 
       {/* Empty State */}
@@ -576,8 +629,9 @@ function CrowdManagementInner() {
 
 /**
  * Main export wrapping CrowdManagement with ErrorBoundary protection.
+ * @returns {React.ReactElement} The wrapped CrowdManagement component
  */
-export default function CrowdManagement() {
+export default function CrowdManagement(): React.ReactElement {
   return (
     <ErrorBoundary moduleName="Crowd Management">
       <CrowdManagementInner />

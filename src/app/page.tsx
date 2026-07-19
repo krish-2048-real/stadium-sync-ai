@@ -33,7 +33,15 @@ export const metadata = {
 /*  Page Component                                                     */
 /* ------------------------------------------------------------------ */
 
-export default function DashboardPage() {
+/**
+ * DashboardPage Component
+ *
+ * The root page layout assembling the Crowd Management, Multilingual Assistant,
+ * and Sustainability modules.
+ *
+ * @returns {React.ReactElement} The main dashboard page layout
+ */
+export default function DashboardPage(): React.ReactElement {
   return (
     <>
       {/* Skip-to-content link for keyboard navigation */}

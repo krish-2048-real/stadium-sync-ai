@@ -1,10 +1,12 @@
 /**
- * MultilingualAssistant Component
+ * @file MultilingualAssistant.tsx
+ * @description MultilingualAssistant Component
  *
  * Allows operators to select a PA announcement template (or write custom text),
  * pick target languages, and get AI-powered translations via Gemini.
  *
  * Optimised with React.useMemo, React.useCallback, and strict null/undefined safety.
+ * Implements semantic HTML and exhaustive JSDoc typing.
  */
 
 "use client";
@@ -24,6 +26,11 @@ import ErrorBoundary from "./ErrorBoundary";
 
 /**
  * Renders a single translated text item.
+ * @param {Object} props - Component properties
+ * @param {string} props.language - ISO language code
+ * @param {string} props.languageName - Human readable language name
+ * @param {string} props.text - The translated announcement string
+ * @returns {React.ReactElement} Translation card UI
  */
 const TranslationCard = React.memo(function TranslationCard({
   language,
@@ -39,20 +46,26 @@ const TranslationCard = React.memo(function TranslationCard({
   const txt = text ?? "";
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/8 transition-colors">
-      <div className="flex items-center gap-2 mb-2">
+    <article className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/8 transition-colors">
+      <header className="flex items-center gap-2 mb-2">
         <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 text-xs font-bold rounded uppercase">
           {lang}
         </span>
-        <span className="text-sm text-slate-400">{name}</span>
-      </div>
+        <h4 className="text-sm font-medium text-slate-400">{name}</h4>
+      </header>
       <p className="text-sm text-white leading-relaxed">{txt}</p>
-    </div>
+    </article>
   );
 });
 
 /**
  * Renders language pick options.
+ * @param {Object} props - Component properties
+ * @param {string} props.code - ISO language code
+ * @param {string} props.name - Human readable language name
+ * @param {boolean} props.isSelected - Whether the language is currently selected
+ * @param {(code: string) => void} props.onToggle - Toggle handler
+ * @returns {React.ReactElement} Language option label UI
  */
 const LanguageOption = React.memo(function LanguageOption({
   code,
@@ -89,6 +102,10 @@ const LanguageOption = React.memo(function LanguageOption({
 /*  Inner Multilingual Assistant Component                             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Core UI implementation for Multilingual PA Assistant.
+ * @returns {React.ReactElement} Main MultilingualAssistant section
+ */
 function MultilingualAssistantInner() {
   const [sourceText, setSourceText] = useState(SAMPLE_ANNOUNCEMENTS[0] ?? "");
   const [context, setContext] = useState<TranslationRequest["context"]>("general");
@@ -170,14 +187,14 @@ function MultilingualAssistantInner() {
 
   // Memoised translations display
   const renderedTranslations = useMemo(() => {
-    return aiResponse?.translations?.map((t, idx) => (
+    return (aiResponse?.translations ?? []).map((t, idx) => (
       <TranslationCard
         key={idx}
         language={t.language}
         languageName={t.languageName}
         text={t.text}
       />
-    )) ?? null;
+    ));
   }, [aiResponse?.translations]);
 
   return (
@@ -186,7 +203,7 @@ function MultilingualAssistantInner() {
       className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-white/10 rounded-2xl p-6 shadow-xl"
     >
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <header className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-lg shadow-lg shadow-purple-500/20">
           🌐
         </div>
@@ -198,7 +215,7 @@ function MultilingualAssistantInner() {
             AI-powered announcement translation for global fans (FIFA 2026)
           </p>
         </div>
-      </div>
+      </header>
 
       {/* Announcement Input */}
       <div className="space-y-4 mb-6">
@@ -330,14 +347,16 @@ function MultilingualAssistantInner() {
 
       {/* Translations */}
       {aiResponse && (
-        <div aria-live="polite" className="space-y-3 border-t border-white/10 pt-4">
-          <h3 className="text-sm font-semibold text-slate-300">
-            📝 Translations ({(aiResponse.translations ?? []).length} languages)
-          </h3>
+        <section aria-live="polite" className="space-y-3 border-t border-white/10 pt-4">
+          <header>
+            <h3 className="text-sm font-semibold text-slate-300">
+              📝 Translations ({(aiResponse.translations ?? []).length} languages)
+            </h3>
+          </header>
           <div className="space-y-2">
             {renderedTranslations}
           </div>
-        </div>
+        </section>
       )}
 
       {/* Empty State */}
@@ -355,8 +374,9 @@ function MultilingualAssistantInner() {
 
 /**
  * Main export wrapping MultilingualAssistant with ErrorBoundary protection.
+ * @returns {React.ReactElement} The wrapped MultilingualAssistant component
  */
-export default function MultilingualAssistant() {
+export default function MultilingualAssistant(): React.ReactElement {
   return (
     <ErrorBoundary moduleName="Multilingual PA Assistant">
       <MultilingualAssistantInner />

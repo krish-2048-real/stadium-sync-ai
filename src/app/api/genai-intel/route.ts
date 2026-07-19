@@ -1,5 +1,6 @@
 /**
- * GenAI Intelligence API Route — /api/genai-intel
+ * @file route.ts
+ * @description GenAI Intelligence API Route — /api/genai-intel
  *
  * Server-side Next.js route handler that:
  * 1. Validates incoming JSON payloads via strict schema validation
@@ -29,6 +30,7 @@ import type {
 
 /**
  * Simple in-memory rate limiter store tracking client IPs.
+ * @type {Map<string, { count: number; resetTime: number }>}
  */
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
@@ -41,8 +43,8 @@ const RATE_LIMIT_MAX_REQUESTS = 20;
 /**
  * Validates whether the incoming client IP has exceeded the request limits.
  *
- * @param clientIp - The IP address of the client request
- * @returns Object indicating if request is allowed and remaining request count
+ * @param {string} clientIp - The IP address of the client request
+ * @returns {{ allowed: boolean; remaining: number }} Object indicating if request is allowed and remaining request count
  */
 function checkRateLimit(clientIp: string): { allowed: boolean; remaining: number } {
   const now = Date.now();
@@ -68,23 +70,24 @@ function checkRateLimit(clientIp: string): { allowed: boolean; remaining: number
 /**
  * Builds a detailed Gemini prompt for the Crowd Management module.
  * Incorporates specific FIFA World Cup 2026 scenarios (multi-modal transit congestion,
- * dynamic navigation path advice, and real-time zone crowd density heatmapping).
+ * dynamic navigation path advice, schedule-synced transit hub coordination,
+ * wheelchair/handicapped accessibility analysis, and real-time zone crowd density heatmapping).
  *
- * @param data - The crowd management input payload
- * @returns Full prompt string for the Gemini API model
+ * @param {CrowdManagementRequest} data - The crowd management input payload
+ * @returns {string} Full prompt string for the Gemini API model
  */
 function buildCrowdPrompt(data: CrowdManagementRequest): string {
   const gatesSummary = (data.gates ?? [])
     .map(
       (g) =>
-        `${g.gateId} (${g.zone}): wait=${g.currentWaitTime}min, capacity=${g.capacity}/min, utilization=${g.utilizationPercent}%`
+        `${g.gateId} (${g.zone}): wait=${g.currentWaitTime}min, capacity=${g.capacity}/min, utilization=${g.utilizationPercent}%, immediateRerouteFlag=${g.requiresImmediateRerouting}`
     )
     .join("\n");
 
   const hubsSummary = (data.transportationHubs ?? [])
     .map(
       (h) =>
-        `- ${h.hubId} (${h.mode}): throughput=${h.currentThroughput}/min, max=${h.maxCapacity}/min, wait=${h.estimatedWaitMinutes}min, status=${h.status}`
+        `- ${h.hubId} (${h.mode}): throughput=${h.currentThroughput}/min, max=${h.maxCapacity}/min, wait=${h.estimatedWaitMinutes}min, status=${h.status}, scheduleDelay=${h.scheduleDelayMinutes ?? "none"}min`
     )
     .join("\n");
 
@@ -112,13 +115,13 @@ Analyze the following real-time telemetry metrics and generate operational intel
     data.maxCapacity ? Math.round((data.totalOccupancy / data.maxCapacity) * 100) : 0
   }%)
 
-**Monitored Entry/Exit Gates:**
+**Monitored Entry/Exit Gates (Focus on 'immediateRerouteFlag'):**
 ${gatesSummary}
 
-**Multi-modal Transportation Hubs (Trains, Buses, Parking, Rideshare):**
+**Multi-modal Transportation Hubs (Trains, Buses, Parking, Rideshare - Analyze schedule alignments):**
 ${hubsSummary}
 
-**Dynamic Concourse & Stadium Navigation Paths:**
+**Dynamic Concourse & Stadium Navigation Paths (Highlight Wheelchair Accessibility blockages):**
 ${pathsSummary}
 
 **Real-Time Zone Crowd Density Heatmapping:**
@@ -127,7 +130,7 @@ ${densitySummary}
 Respond ONLY with a valid, clean JSON object matching the exact structure below (no markdown formatting, no code fences):
 {
   "alertLevel": "low" | "moderate" | "high" | "critical",
-  "analysis": "A comprehensive 2-3 sentence analysis of current ingress/egress gate wait times, stadium flow hotspots, and transit bottleneck points.",
+  "analysis": "A comprehensive 2-3 sentence analysis of current ingress/egress gate wait times, stadium flow hotspots, wheelchair routing blockages, and schedule-synced transit bottlenecks.",
   "deploymentSuggestions": [
     {
       "location": "Gate, Stand, Corridor, or Hub name",
@@ -135,18 +138,19 @@ Respond ONLY with a valid, clean JSON object matching the exact structure below 
       "priority": "low" | "medium" | "high" | "urgent"
     }
   ],
-  "transportationAdvisory": "Actionable instructions for train arrivals, bus loops, or parking lot traffic redirections.",
-  "navigationGuidance": "Real-time navigation redirection directives to display on stadium signage screens for routing fans away from dense spots."
+  "transportationAdvisory": "Actionable instructions for train arrivals, bus loops, or parking lot traffic redirections synced to their schedules.",
+  "navigationGuidance": "Real-time navigation redirection directives to display on stadium signage screens for routing fans away from dense spots, including specific handicap-accessible routing.",
+  "triggerImmediateRerouting": boolean
 }
 
-Provide 3-5 concrete, actionable deployment suggestions addressing bottlenecks and prioritizing security and accessibility.`;
+Provide 3-5 concrete, actionable deployment suggestions addressing bottlenecks and prioritizing security and accessibility. Set "triggerImmediateRerouting" to true if any gate utilization exceeds 120% or if wheelchair paths are totally blocked.`;
 }
 
 /**
  * Builds a Gemini prompt for the Translation module.
  *
- * @param data - The translation request payload
- * @returns Full prompt string for the Gemini API model
+ * @param {TranslationRequest} data - The translation request payload
+ * @returns {string} Full prompt string for the Gemini API model
  */
 function buildTranslationPrompt(data: TranslationRequest): string {
   const langList = (data.targetLanguages ?? []).join(", ");
@@ -180,8 +184,8 @@ Ensure the translation is perfectly suited for stadium PA announcements.`;
 /**
  * Builds a Gemini prompt for the Sustainability module.
  *
- * @param data - The sustainability request payload
- * @returns Full prompt string for the Gemini API model
+ * @param {SustainabilityRequest} data - The sustainability request payload
+ * @returns {string} Full prompt string for the Gemini API model
  */
 function buildSustainabilityPrompt(data: SustainabilityRequest): string {
   const gridsSummary = (data.grids ?? [])
@@ -191,9 +195,13 @@ function buildSustainabilityPrompt(data: SustainabilityRequest): string {
     )
     .join("\n");
 
+  const wasteSummary = data.wasteMetrics
+    ? `Total Waste: ${data.wasteMetrics.totalWasteKg}kg\nRecycled: ${data.wasteMetrics.recycledKg}kg\nLandfill: ${data.wasteMetrics.landfillKg}kg\nDiversion Rate: ${data.wasteMetrics.diversionRatePercent}%`
+    : "Waste metrics not available.";
+
   return `You are an AI sustainability and smart-grid optimizer for the FIFA World Cup 2026 stadium complex.
 
-Analyze the power grid metrics below and provide energy efficiency optimization tips.
+Analyze the power grid and waste metrics below and provide comprehensive energy efficiency and waste reduction optimization tips.
 
 **Weather Conditions:**
 - Temperature: ${data.weatherConditions?.temperatureCelsius ?? 20}°C
@@ -202,6 +210,9 @@ Analyze the power grid metrics below and provide energy efficiency optimization 
 
 **Zone Grid Power Consumption:**
 ${gridsSummary}
+
+**Stadium Waste & Recycling Metrics:**
+${wasteSummary}
 
 Respond ONLY with a valid, clean JSON object matching the exact structure below (no markdown formatting, no code fences):
 {
@@ -215,10 +226,18 @@ Respond ONLY with a valid, clean JSON object matching the exact structure below 
       "targetZone": "Zone name"
     }
   ],
-  "carbonReductionKg": number
+  "carbonReductionKg": number,
+  "wasteTips": [
+    {
+      "title": "Short title of waste reduction tip",
+      "description": "Granular action item for janitorial staff or concessionaires (e.g. divert specific compostable plastics, optimize recycling bin placement)",
+      "impactLevel": "low" | "medium" | "high",
+      "targetZone": "Target concession or concourse"
+    }
+  ]
 }
 
-Provide 3-5 high-impact energy efficiency tips.`;
+Provide 3-5 high-impact energy efficiency tips and 2-3 waste reduction tips to minimize the stadium's total carbon footprint.`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -228,10 +247,10 @@ Provide 3-5 high-impact energy efficiency tips.`;
 /**
  * Next.js API Route Handler for smart stadium operations analysis.
  *
- * @param request - NextRequest object
- * @returns NextResponse containing AI intel or validation error details
+ * @param {NextRequest} request - NextRequest object
+ * @returns {Promise<NextResponse>} NextResponse containing AI intel or validation error details
  */
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   const timestamp = new Date().toISOString();
 
   try {
@@ -246,10 +265,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          module: "crowd-management" as const,
+          module: "crowd-management",
           error: "Rate limit exceeded. Please try again later.",
           timestamp,
-        } satisfies GenAIApiResponse,
+        } as GenAIApiResponse,
         {
           status: 429,
           headers: { "Retry-After": "60" },
@@ -268,7 +287,7 @@ export async function POST(request: NextRequest) {
           module: "crowd-management",
           error: "Invalid JSON in request body",
           timestamp,
-        } satisfies GenAIApiResponse,
+        } as GenAIApiResponse,
         { status: 400 }
       );
     }
@@ -281,7 +300,7 @@ export async function POST(request: NextRequest) {
           module: (body as GenAIRequestPayload)?.module || "crowd-management",
           error: validation.error,
           timestamp,
-        } satisfies GenAIApiResponse,
+        } as GenAIApiResponse,
         { status: 400 }
       );
     }
@@ -298,7 +317,7 @@ export async function POST(request: NextRequest) {
           module: payload.module,
           error: "AI service is not configured. Please contact the administrator.",
           timestamp,
-        } satisfies GenAIApiResponse,
+        } as GenAIApiResponse,
         { status: 503 }
       );
     }
@@ -327,7 +346,7 @@ export async function POST(request: NextRequest) {
           data: cachedData,
           timestamp,
           cached: true,
-        } satisfies GenAIApiResponse,
+        } as GenAIApiResponse,
         {
           status: 200,
           headers: {
@@ -362,7 +381,7 @@ export async function POST(request: NextRequest) {
           module: payload.module,
           error: "AI returned an unparseable response. Please try again.",
           timestamp,
-        } satisfies GenAIApiResponse,
+        } as GenAIApiResponse,
         { status: 502 }
       );
     }
@@ -378,7 +397,7 @@ export async function POST(request: NextRequest) {
         data: parsedData,
         timestamp,
         cached: false,
-      } satisfies GenAIApiResponse,
+      } as GenAIApiResponse,
       {
         status: 200,
         headers: {
@@ -395,7 +414,7 @@ export async function POST(request: NextRequest) {
         module: "crowd-management",
         error: "An internal server error occurred.",
         timestamp,
-      } satisfies GenAIApiResponse,
+      } as GenAIApiResponse,
       { status: 500 }
     );
   }
