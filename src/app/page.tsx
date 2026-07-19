@@ -1,101 +1,148 @@
-import Image from "next/image";
+/**
+ * StadiumSync AI — Main Dashboard Page
+ *
+ * The central command center for FIFA World Cup 2026 stadium operations.
+ * Renders three AI-powered modules: Crowd Management, Multilingual PA, Sustainability.
+ *
+ * Uses semantic HTML5, WCAG 2.1 AA compliant layout, and efficient component composition.
+ */
 
-export default function Home() {
+import React from "react";
+import CrowdManagement from "@/components/CrowdManagement";
+import MultilingualAssistant from "@/components/MultilingualAssistant";
+import Sustainability from "@/components/Sustainability";
+
+/* ------------------------------------------------------------------ */
+/*  Metadata (Next.js App Router)                                      */
+/* ------------------------------------------------------------------ */
+
+export const metadata = {
+  title: "StadiumSync AI — FIFA World Cup 2026 Smart Stadium Dashboard",
+  description:
+    "AI-powered operational intelligence for FIFA World Cup 2026 stadium management. Real-time crowd control, multilingual PA announcements, and sustainability monitoring.",
+  keywords: [
+    "FIFA World Cup 2026",
+    "stadium management",
+    "crowd control AI",
+    "smart stadium",
+    "sustainability",
+  ],
+};
+
+/* ------------------------------------------------------------------ */
+/*  Page Component                                                     */
+/* ------------------------------------------------------------------ */
+
+export default function DashboardPage() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <>
+      {/* Skip-to-content link for keyboard navigation */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {/* Navigation Header */}
+      <nav
+        aria-label="Main navigation"
+        className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-xl border-b border-white/5"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo / Branding */}
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                <span className="text-white text-sm font-black">SS</span>
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-white tracking-tight">
+                  StadiumSync
+                  <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    {" "}
+                    AI
+                  </span>
+                </h1>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest -mt-0.5">
+                  FIFA World Cup 2026 Operations
+                </p>
+              </div>
+            </div>
+
+            {/* Status Indicators */}
+            <div className="hidden sm:flex items-center gap-4">
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                Live Data Feed
+              </div>
+              <div className="text-xs text-slate-500 font-mono">
+                {new Date().toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </div>
+              <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 text-blue-300 rounded-full">
+                Gemini AI Active
+              </div>
+            </div>
+          </div>
         </div>
+      </nav>
+
+      {/* Main Content */}
+      <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Dashboard Hero */}
+        <header className="mb-8">
+          <div className="bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 border border-white/5 rounded-2xl p-6 sm:p-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+              Smart Stadium Command Center
+            </h2>
+            <p className="text-sm sm:text-base text-slate-400 max-w-2xl">
+              Real-time operational intelligence powered by Google Gemini AI.
+              Monitor crowd flow, manage multilingual announcements, and optimize
+              energy efficiency across all stadium zones.
+            </p>
+            <div className="flex flex-wrap gap-3 mt-4">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-blue-500/10 text-blue-300 rounded-full border border-blue-500/20">
+                👥 Crowd Analytics
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-purple-500/10 text-purple-300 rounded-full border border-purple-500/20">
+                🌐 8+ Languages
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-green-500/10 text-green-300 rounded-full border border-green-500/20">
+                🌱 Carbon Tracking
+              </span>
+            </div>
+          </div>
+        </header>
+
+        {/* Module Grid */}
+        <div className="space-y-8">
+          {/* Row 1: Crowd Management (full width) */}
+          <CrowdManagement />
+
+          {/* Row 2: Translation & Sustainability side by side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <MultilingualAssistant />
+            <Sustainability />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <footer className="mt-12 pt-6 border-t border-white/5 text-center">
+          <p className="text-xs text-slate-600">
+            StadiumSync AI — FIFA World Cup 2026 Stadium Operations Dashboard
+          </p>
+          <p className="text-xs text-slate-700 mt-1">
+            Powered by Google Gemini AI • Simulated Data for Demonstration
+          </p>
+        </footer>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+    </>
   );
 }
