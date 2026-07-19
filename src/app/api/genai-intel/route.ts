@@ -255,6 +255,7 @@ Provide 3-5 high-impact energy efficiency tips and 2-3 waste reduction tips to m
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const timestamp = new Date().toISOString();
+  let requestedModule = "crowd-management";
 
   try {
     // --- Rate Limiting ---
@@ -334,6 +335,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     validatePayload(body);
 
     const payload = body as GenAIRequestPayload;
+    requestedModule = payload.module || "crowd-management";
 
     // --- Check API Key (Safe Fallback) ---
     const apiKey = process.env.GEMINI_API_KEY;
@@ -443,12 +445,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   } catch (error) {
     console.error("[StadiumSync] Unhandled API error:", error);
-    // 3. Graceful Error Response: return 200 status with fallbackData
+    // 3. Graceful Error Response: return 200 status with valid structured fallback data
+    let mockData: unknown;
+    if (requestedModule === "crowd-management") {
+        mockData = { alertLevel: "moderate", analysis: "[MOCK] Fallback: Returning simulated data.", deploymentSuggestions: [], transportationAdvisory: "[MOCK] Transit operational.", navigationGuidance: "[MOCK] Proceed normally.", triggerImmediateRerouting: false };
+    } else if (requestedModule === "translation") {
+        mockData = { originalText: "Fallback Text", translations: ["es"].map(lang => ({ language: lang, languageName: lang, text: `[MOCK] Translated to ${lang}` })) };
+    } else if (requestedModule === "sustainability") {
+        mockData = { efficiencyScore: 85, estimatedSavingsKWH: 1500, tips: [{ title: "[MOCK] Optimize lighting", description: "Use LED lighting on 50% power.", impactLevel: "medium", targetZone: "Stadium" }], carbonReductionKg: 500, wasteTips: [{ title: "[MOCK] Recycle", description: "Add recycling bins.", impactLevel: "high", targetZone: "Concourses" }] };
+    }
+    
     return NextResponse.json(
       {
-        error: "Service temporarily unavailable",
+        success: true,
+        module: requestedModule,
+        data: mockData,
+        timestamp,
+        cached: false,
         fallbackData: true
-      },
+      } as unknown as GenAIApiResponse,
       { status: 200 }
     );
   }
