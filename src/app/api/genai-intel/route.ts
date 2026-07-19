@@ -4,8 +4,9 @@
  * Server-side Next.js route handler that:
  * 1. Validates incoming JSON payloads via strict schema validation
  * 2. Applies rate-limiting (placeholder — production should use Redis/upstash)
- * 3. Calls the Google Gemini API with module-specific prompts
- * 4. Returns structured JSON responses
+ * 3. Incorporates a fast caching layer (using memory-cache with TTL checks)
+ * 4. Calls the Google Gemini API with detailed prompts geared towards FIFA World Cup 2026
+ * 5. Returns structured JSON responses
  *
  * Security: The GEMINI_API_KEY is accessed ONLY via process.env on the server.
  */
@@ -13,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { validatePayload } from "@/lib/validation";
+import { getCachedResponse, setCachedResponse } from "@/lib/cache";
 import type {
   GenAIRequestPayload,
   GenAIApiResponse,
@@ -26,20 +28,27 @@ import type {
 /* ------------------------------------------------------------------ */
 
 /**
- * Simple in-memory rate limiter.
- * In production, replace with Redis-backed solution (e.g., @upstash/ratelimit).
+ * Simple in-memory rate limiter store tracking client IPs.
  */
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
-const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 20; // 20 requests per window
+/** Rate limit window in milliseconds (1 minute). */
+const RATE_LIMIT_WINDOW_MS = 60_000;
 
+/** Maximum requests allowed per IP per window. */
+const RATE_LIMIT_MAX_REQUESTS = 20;
+
+/**
+ * Validates whether the incoming client IP has exceeded the request limits.
+ *
+ * @param clientIp - The IP address of the client request
+ * @returns Object indicating if request is allowed and remaining request count
+ */
 function checkRateLimit(clientIp: string): { allowed: boolean; remaining: number } {
   const now = Date.now();
   const entry = rateLimitStore.get(clientIp);
 
   if (!entry || now > entry.resetTime) {
-    // New window
     rateLimitStore.set(clientIp, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
     return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1 };
   }
@@ -56,101 +65,152 @@ function checkRateLimit(clientIp: string): { allowed: boolean; remaining: number
 /*  Prompt Builders                                                    */
 /* ------------------------------------------------------------------ */
 
-/** Builds a Gemini prompt for the Crowd Management module. */
+/**
+ * Builds a detailed Gemini prompt for the Crowd Management module.
+ * Incorporates specific FIFA World Cup 2026 scenarios (multi-modal transit congestion,
+ * dynamic navigation path advice, and real-time zone crowd density heatmapping).
+ *
+ * @param data - The crowd management input payload
+ * @returns Full prompt string for the Gemini API model
+ */
 function buildCrowdPrompt(data: CrowdManagementRequest): string {
-  const gatesSummary = data.gates
+  const gatesSummary = (data.gates ?? [])
     .map(
       (g) =>
-        `${g.gateId} (${g.zone}): wait=${g.currentWaitTime}min, capacity=${g.capacity}, utilization=${g.utilizationPercent}%`
+        `${g.gateId} (${g.zone}): wait=${g.currentWaitTime}min, capacity=${g.capacity}/min, utilization=${g.utilizationPercent}%`
     )
     .join("\n");
 
-  return `You are an AI crowd management expert for the FIFA World Cup 2026 stadium operations.
+  const hubsSummary = (data.transportationHubs ?? [])
+    .map(
+      (h) =>
+        `- ${h.hubId} (${h.mode}): throughput=${h.currentThroughput}/min, max=${h.maxCapacity}/min, wait=${h.estimatedWaitMinutes}min, status=${h.status}`
+    )
+    .join("\n");
 
-Analyze the following real-time gate data and provide operational intelligence.
+  const pathsSummary = (data.navigationPaths ?? [])
+    .map(
+      (p) =>
+        `- ${p.pathId} (${p.from} -> ${p.to}): est=${p.estimatedMinutes}min, congestion=${p.congestionPercent}%, accessible=${p.isAccessible}, wheelchair=${p.isWheelchairAccessible}`
+    )
+    .join("\n");
 
-**Stadium Status:**
-- Timestamp: ${data.timestamp}
-- Total Occupancy: ${data.totalOccupancy.toLocaleString()} / ${data.maxCapacity.toLocaleString()} (${Math.round((data.totalOccupancy / data.maxCapacity) * 100)}%)
+  const densitySummary = (data.zoneDensity ?? [])
+    .map(
+      (z) =>
+        `- ${z.zoneId} (${z.zoneType}): count=${z.currentCount}, max=${z.maxOccupancy}, density=${z.densityPercent}%, trend=${z.trend}`
+    )
+    .join("\n");
 
-**Gate Data:**
+  return `You are an elite AI crowd management and smart stadium operations expert for the FIFA World Cup 2026.
+
+Analyze the following real-time telemetry metrics and generate operational intelligence.
+
+**Venue Metrics:**
+- Snapshot Timestamp: ${data.timestamp ?? "N/A"}
+- Total Occupancy: ${(data.totalOccupancy ?? 0).toLocaleString()} / ${(data.maxCapacity ?? 0).toLocaleString()} (${
+    data.maxCapacity ? Math.round((data.totalOccupancy / data.maxCapacity) * 100) : 0
+  }%)
+
+**Monitored Entry/Exit Gates:**
 ${gatesSummary}
 
-Respond ONLY with a valid JSON object in this exact format (no markdown, no code fences):
+**Multi-modal Transportation Hubs (Trains, Buses, Parking, Rideshare):**
+${hubsSummary}
+
+**Dynamic Concourse & Stadium Navigation Paths:**
+${pathsSummary}
+
+**Real-Time Zone Crowd Density Heatmapping:**
+${densitySummary}
+
+Respond ONLY with a valid, clean JSON object matching the exact structure below (no markdown formatting, no code fences):
 {
   "alertLevel": "low" | "moderate" | "high" | "critical",
-  "analysis": "A 2-3 sentence summary of the current crowd situation",
+  "analysis": "A comprehensive 2-3 sentence analysis of current ingress/egress gate wait times, stadium flow hotspots, and transit bottleneck points.",
   "deploymentSuggestions": [
     {
-      "location": "Gate or Zone name",
-      "action": "Specific staff action to take",
+      "location": "Gate, Stand, Corridor, or Hub name",
+      "action": "Clear operational direction (e.g. open secondary lanes, reallocate ushers, dispatch shuttle buses)",
       "priority": "low" | "medium" | "high" | "urgent"
     }
-  ]
+  ],
+  "transportationAdvisory": "Actionable instructions for train arrivals, bus loops, or parking lot traffic redirections.",
+  "navigationGuidance": "Real-time navigation redirection directives to display on stadium signage screens for routing fans away from dense spots."
 }
 
-Provide 2-4 actionable deployment suggestions based on the data.`;
+Provide 3-5 concrete, actionable deployment suggestions addressing bottlenecks and prioritizing security and accessibility.`;
 }
 
-/** Builds a Gemini prompt for the Translation module. */
+/**
+ * Builds a Gemini prompt for the Translation module.
+ *
+ * @param data - The translation request payload
+ * @returns Full prompt string for the Gemini API model
+ */
 function buildTranslationPrompt(data: TranslationRequest): string {
-  const langList = data.targetLanguages.join(", ");
+  const langList = (data.targetLanguages ?? []).join(", ");
   const contextNote = data.context
-    ? `This is a ${data.context} announcement — use appropriate tone and urgency.`
+    ? `This is a ${data.context} announcement — use appropriate tone, priority, and public safety phrasing.`
     : "This is a general stadium announcement.";
 
-  return `You are a professional multilingual translator for FIFA World Cup 2026 stadium PA systems.
+  return `You are a professional multilingual translator specialized in FIFA World Cup 2026 public address systems.
 
-Translate the following announcement from ${data.sourceLanguage} into these languages: ${langList}
+Translate the following announcement from ${data.sourceLanguage ?? "English"} into these languages: ${langList}
 
 ${contextNote}
 
-**Original Text:** "${data.sourceText}"
+**Original Text:** "${data.sourceText ?? ""}"
 
-Respond ONLY with a valid JSON object (no markdown, no code fences):
+Respond ONLY with a valid, clean JSON object matching the exact structure below (no markdown formatting, no code fences):
 {
-  "originalText": "${data.sourceText}",
+  "originalText": "${data.sourceText ?? ""}",
   "translations": [
     {
       "language": "language code",
       "languageName": "Language Name in English",
-      "text": "Translated text"
+      "text": "Translated announcement text"
     }
   ]
 }
 
-Ensure translations are culturally appropriate and suitable for public address systems.`;
+Ensure the translation is perfectly suited for stadium PA announcements.`;
 }
 
-/** Builds a Gemini prompt for the Sustainability module. */
+/**
+ * Builds a Gemini prompt for the Sustainability module.
+ *
+ * @param data - The sustainability request payload
+ * @returns Full prompt string for the Gemini API model
+ */
 function buildSustainabilityPrompt(data: SustainabilityRequest): string {
-  const gridsSummary = data.grids
+  const gridsSummary = (data.grids ?? [])
     .map(
       (g) =>
-        `${g.zone}: ${g.currentConsumptionKW}kW (baseline: ${g.baselineKW}kW), renewable: ${g.renewablePercent}%, HVAC: ${g.hvacStatus}, lighting: ${g.lightingPercent}%`
+        `${g.zone}: current=${g.currentConsumptionKW}kW, baseline=${g.baselineKW}kW, renewable=${g.renewablePercent}%, HVAC=${g.hvacStatus}, lighting=${g.lightingPercent}%`
     )
     .join("\n");
 
-  return `You are an AI sustainability advisor for FIFA World Cup 2026 stadium operations.
+  return `You are an AI sustainability and smart-grid optimizer for the FIFA World Cup 2026 stadium complex.
 
-Analyze the following energy data and provide efficiency recommendations.
+Analyze the power grid metrics below and provide energy efficiency optimization tips.
 
 **Weather Conditions:**
-- Temperature: ${data.weatherConditions.temperatureCelsius}°C
-- Humidity: ${data.weatherConditions.humidity}%
-- Raining: ${data.weatherConditions.isRaining ? "Yes" : "No"}
+- Temperature: ${data.weatherConditions?.temperatureCelsius ?? 20}°C
+- Humidity: ${data.weatherConditions?.humidity ?? 50}%
+- Raining: ${data.weatherConditions?.isRaining ? "Yes" : "No"}
 
-**Energy Grid Data:**
+**Zone Grid Power Consumption:**
 ${gridsSummary}
 
-Respond ONLY with a valid JSON object (no markdown, no code fences):
+Respond ONLY with a valid, clean JSON object matching the exact structure below (no markdown formatting, no code fences):
 {
   "efficiencyScore": 0-100,
   "estimatedSavingsKWH": number,
   "tips": [
     {
-      "title": "Short tip title",
-      "description": "Detailed recommendation",
+      "title": "Short title of energy tip",
+      "description": "Granular action item for BMS operators (e.g. adjust HVAC setpoint, dim non-active light banks)",
       "impactLevel": "low" | "medium" | "high",
       "targetZone": "Zone name"
     }
@@ -158,13 +218,19 @@ Respond ONLY with a valid JSON object (no markdown, no code fences):
   "carbonReductionKg": number
 }
 
-Provide 3-5 actionable energy efficiency tips.`;
+Provide 3-5 high-impact energy efficiency tips.`;
 }
 
 /* ------------------------------------------------------------------ */
 /*  Route Handler                                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Next.js API Route Handler for smart stadium operations analysis.
+ *
+ * @param request - NextRequest object
+ * @returns NextResponse containing AI intel or validation error details
+ */
 export async function POST(request: NextRequest) {
   const timestamp = new Date().toISOString();
 
@@ -251,6 +317,27 @@ export async function POST(request: NextRequest) {
         break;
     }
 
+    // --- Check Cache Layer ---
+    const cachedData = getCachedResponse(prompt);
+    if (cachedData !== null) {
+      return NextResponse.json(
+        {
+          success: true,
+          module: payload.module,
+          data: cachedData,
+          timestamp,
+          cached: true,
+        } satisfies GenAIApiResponse,
+        {
+          status: 200,
+          headers: {
+            "X-Cache": "HIT",
+            "X-RateLimit-Remaining": String(rateCheck.remaining),
+          },
+        }
+      );
+    }
+
     // --- Call Gemini API ---
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -259,7 +346,6 @@ export async function POST(request: NextRequest) {
     const responseText = result.response.text();
 
     // --- Parse AI Response ---
-    // Strip markdown code fences if Gemini wraps the JSON
     const cleanedResponse = responseText
       .replace(/```json\s*/gi, "")
       .replace(/```\s*/gi, "")
@@ -281,6 +367,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // --- Populate Cache ---
+    setCachedResponse(prompt, parsedData);
+
     // --- Return Success ---
     return NextResponse.json(
       {
@@ -288,10 +377,12 @@ export async function POST(request: NextRequest) {
         module: payload.module,
         data: parsedData,
         timestamp,
+        cached: false,
       } satisfies GenAIApiResponse,
       {
         status: 200,
         headers: {
+          "X-Cache": "MISS",
           "X-RateLimit-Remaining": String(rateCheck.remaining),
         },
       }

@@ -2,7 +2,9 @@
  * StadiumSync AI — Core TypeScript Interfaces
  *
  * Defines all data structures used across the dashboard for
- * crowd management, multilingual announcements, and sustainability modules.
+ * crowd management, multilingual announcements, sustainability modules,
+ * and FIFA World Cup 2026–specific operational data (transportation hubs,
+ * stadium navigation, and venue crowd density intelligence).
  */
 
 /* ------------------------------------------------------------------ */
@@ -33,6 +35,12 @@ export interface CrowdManagementRequest {
   maxCapacity: number;
   /** Per-gate breakdown */
   gates: GateData[];
+  /** Real-time transportation hub data for the FIFA WC 2026 venue */
+  transportationHubs?: TransportationHub[];
+  /** Dynamic navigation path data showing crowd flow through the stadium */
+  navigationPaths?: NavigationPath[];
+  /** Per-zone crowd density heatmap data */
+  zoneDensity?: ZoneDensityData[];
 }
 
 /** AI-generated crowd management recommendation. */
@@ -43,6 +51,10 @@ export interface CrowdManagementResponse {
   analysis: string;
   /** Specific staff deployment recommendations */
   deploymentSuggestions: DeploymentSuggestion[];
+  /** Transportation hub recommendations (optional, present when hub data supplied) */
+  transportationAdvisory?: string;
+  /** Dynamic navigation suggestions (optional) */
+  navigationGuidance?: string;
 }
 
 /** A single staff deployment recommendation. */
@@ -53,6 +65,62 @@ export interface DeploymentSuggestion {
   action: string;
   /** Priority level */
   priority: "low" | "medium" | "high" | "urgent";
+}
+
+/* ------------------------------------------------------------------ */
+/*  FIFA WC 2026 — Transportation Hub Types                            */
+/* ------------------------------------------------------------------ */
+
+/** Multi-modal transportation hub connected to the stadium venue. */
+export interface TransportationHub {
+  /** Hub identifier, e.g. "MetLife Train Station", "Lot-A Parking" */
+  hubId: string;
+  /** Type of transportation mode */
+  mode: "train" | "bus" | "parking" | "rideshare" | "pedestrian";
+  /** Current passenger/vehicle throughput per minute */
+  currentThroughput: number;
+  /** Maximum hub capacity per minute */
+  maxCapacity: number;
+  /** Estimated wait time in minutes */
+  estimatedWaitMinutes: number;
+  /** Status of the hub */
+  status: "operational" | "congested" | "closed" | "diverting";
+  /** Next scheduled arrival (ISO-8601), applicable for train/bus */
+  nextArrival?: string;
+}
+
+/** Dynamic navigation path within the stadium complex. */
+export interface NavigationPath {
+  /** Path identifier, e.g. "Concourse-North-A" */
+  pathId: string;
+  /** Starting location */
+  from: string;
+  /** Destination location */
+  to: string;
+  /** Estimated traversal time in minutes */
+  estimatedMinutes: number;
+  /** Current congestion level (0-100 scale) */
+  congestionPercent: number;
+  /** Whether the path is currently accessible */
+  isAccessible: boolean;
+  /** Whether this path is wheelchair accessible */
+  isWheelchairAccessible: boolean;
+}
+
+/** Per-zone crowd density data for real-time venue heatmapping. */
+export interface ZoneDensityData {
+  /** Zone identifier, e.g. "North Upper Deck", "South Concourse" */
+  zoneId: string;
+  /** Zone type */
+  zoneType: "seating" | "concourse" | "concession" | "restroom" | "exit";
+  /** Current person count in the zone */
+  currentCount: number;
+  /** Maximum safe occupancy for this zone */
+  maxOccupancy: number;
+  /** Density percentage (currentCount / maxOccupancy * 100) */
+  densityPercent: number;
+  /** Trend direction over the last 5 minutes */
+  trend: "increasing" | "stable" | "decreasing";
 }
 
 /* ------------------------------------------------------------------ */
@@ -173,6 +241,8 @@ export interface GenAIApiResponse<T = unknown> {
   error?: string;
   /** Server timestamp */
   timestamp: string;
+  /** Whether the response was served from cache */
+  cached?: boolean;
 }
 
 /** Combined type for any AI module response */

@@ -1,44 +1,58 @@
 /**
  * Sustainability Component
  *
- * Displays simulated energy grid data and AI-generated
- * sustainability tips with efficiency scores and carbon reduction estimates.
+ * Displays simulated energy grid data and AI-generated sustainability tips,
+ * energy optimization ratings, carbon footprints, and grid statuses.
+ *
+ * Optimised with React.useMemo, React.useCallback, and strict null/undefined safety.
  */
 
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import type {
   SustainabilityRequest,
   SustainabilityResponse,
   EnergyGridData,
+  EnergyTip,
   GenAIApiResponse,
 } from "@/types/stadium";
 import { generateSustainabilityData } from "@/lib/simulatedData";
+import ErrorBoundary from "./ErrorBoundary";
 
 /* ------------------------------------------------------------------ */
-/*  Sub-Components                                                     */
+/*  Sub-Components (Memoised for Max Efficiency)                      */
 /* ------------------------------------------------------------------ */
 
-/** Renders a single energy grid zone card. */
-function GridCard({ grid }: { grid: EnergyGridData }) {
-  const isOverBaseline = grid.currentConsumptionKW > grid.baselineKW;
-  const ratio = Math.round((grid.currentConsumptionKW / grid.baselineKW) * 100);
+/**
+ * Renders a single energy grid zone card.
+ */
+const GridCard = React.memo(function GridCard({ grid }: { grid: EnergyGridData }) {
+  const g = grid ?? {};
+  const zone = g.zone ?? "Unknown Zone";
+  const currentConsumptionKW = g.currentConsumptionKW ?? 0;
+  const baselineKW = g.baselineKW ?? 1;
+  const renewablePercent = g.renewablePercent ?? 0;
+  const hvacStatus = g.hvacStatus ?? "idle";
+  const lightingPercent = g.lightingPercent ?? 0;
+
+  const isOverBaseline = currentConsumptionKW > baselineKW;
+  const ratio = Math.round((currentConsumptionKW / baselineKW) * 100);
 
   return (
     <div className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/10 transition-colors duration-200">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="text-sm font-semibold text-white">{grid.zone}</h4>
+        <h4 className="text-sm font-semibold text-white">{zone}</h4>
         <span
           className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-            grid.hvacStatus === "eco-mode"
+            hvacStatus === "eco-mode"
               ? "bg-emerald-500/20 text-emerald-300"
-              : grid.hvacStatus === "idle"
+              : hvacStatus === "idle"
               ? "bg-slate-500/20 text-slate-300"
               : "bg-amber-500/20 text-amber-300"
           }`}
         >
-          HVAC: {grid.hvacStatus}
+          HVAC: {hvacStatus}
         </span>
       </div>
 
@@ -46,12 +60,12 @@ function GridCard({ grid }: { grid: EnergyGridData }) {
         <div className="flex justify-between">
           <span>Consumption</span>
           <span className={`font-mono ${isOverBaseline ? "text-red-400" : "text-emerald-400"}`}>
-            {grid.currentConsumptionKW} kW
+            {currentConsumptionKW} kW
           </span>
         </div>
         <div className="flex justify-between">
           <span>Baseline</span>
-          <span className="font-mono">{grid.baselineKW} kW</span>
+          <span className="font-mono">{baselineKW} kW</span>
         </div>
         <div className="flex justify-between">
           <span>vs Baseline</span>
@@ -61,40 +75,42 @@ function GridCard({ grid }: { grid: EnergyGridData }) {
         </div>
         <div className="flex justify-between">
           <span>Renewable</span>
-          <span className="font-mono text-green-400">{grid.renewablePercent}%</span>
+          <span className="font-mono text-green-400">{renewablePercent}%</span>
         </div>
         <div className="flex justify-between">
           <span>Lighting</span>
-          <span className="font-mono">{grid.lightingPercent}%</span>
+          <span className="font-mono">{lightingPercent}%</span>
         </div>
 
-        {/* Renewable energy bar */}
         <div
           className="w-full bg-slate-700 rounded-full h-1.5 mt-1"
           role="progressbar"
-          aria-valuenow={grid.renewablePercent}
+          aria-valuenow={renewablePercent}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label={`${grid.zone} renewable energy`}
+          aria-label={`${zone} renewable energy`}
         >
           <div
             className="h-1.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-500"
-            style={{ width: `${grid.renewablePercent}%` }}
+            style={{ width: `${renewablePercent}%` }}
           />
         </div>
       </div>
     </div>
   );
-}
+});
 
-/** Circular efficiency score display. */
-function EfficiencyGauge({ score }: { score: number }) {
+/**
+ * Circular efficiency score gauge display.
+ */
+const EfficiencyGauge = React.memo(function EfficiencyGauge({ score }: { score: number }) {
+  const s = score ?? 0;
   const circumference = 2 * Math.PI * 45;
-  const offset = circumference - (score / 100) * circumference;
+  const offset = circumference - (s / 100) * circumference;
   const color =
-    score >= 75
+    s >= 75
       ? "text-emerald-400"
-      : score >= 50
+      : s >= 50
       ? "text-yellow-400"
       : "text-red-400";
 
@@ -103,7 +119,7 @@ function EfficiencyGauge({ score }: { score: number }) {
       <svg
         className="w-28 h-28"
         viewBox="0 0 100 100"
-        aria-label={`Efficiency score: ${score}%`}
+        aria-label={`Efficiency score: ${s}%`}
         role="img"
       >
         <circle
@@ -136,7 +152,7 @@ function EfficiencyGauge({ score }: { score: number }) {
           fill="currentColor"
           fontSize="20"
         >
-          {score}
+          {s}
         </text>
         <text
           x="50"
@@ -151,19 +167,55 @@ function EfficiencyGauge({ score }: { score: number }) {
       </svg>
     </div>
   );
-}
+});
+
+/**
+ * Renders a single energy efficiency tip.
+ */
+const EnergyTipCard = React.memo(function EnergyTipCard({ tip }: { tip: EnergyTip }) {
+  const t = tip ?? {};
+  const title = t.title ?? "General Tip";
+  const targetZone = t.targetZone ?? "Stadium Complex";
+  const impactLevel = t.impactLevel ?? "medium";
+  const description = t.description ?? "Optimize power baseline usage.";
+
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/8 transition-colors">
+      <div className="flex items-center justify-between mb-1">
+        <h4 className="text-sm font-medium text-white">{title}</h4>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500">{targetZone}</span>
+          <span
+            className={`px-2 py-0.5 text-xs font-bold rounded uppercase ${
+              impactLevel === "high"
+                ? "bg-emerald-500/30 text-emerald-300"
+                : impactLevel === "medium"
+                ? "bg-yellow-500/30 text-yellow-300"
+                : "bg-slate-500/30 text-slate-300"
+            }`}
+          >
+            {impactLevel}
+          </span>
+        </div>
+      </div>
+      <p className="text-xs text-slate-400">{description}</p>
+    </div>
+  );
+});
 
 /* ------------------------------------------------------------------ */
-/*  Main Component                                                     */
+/*  Inner Sustainability Component                                     */
 /* ------------------------------------------------------------------ */
 
-export default function Sustainability() {
+function SustainabilityInner() {
   const [energyData, setEnergyData] = useState<SustainabilityRequest | null>(null);
   const [aiResponse, setAiResponse] = useState<SustainabilityResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** Generate fresh energy data and request AI analysis. */
+  /**
+   * Generates simulated grid telemetry and initiates AI energy optimization request.
+   */
   const analyzeEnergy = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -184,7 +236,7 @@ export default function Sustainability() {
       const result: GenAIApiResponse<SustainabilityResponse> = await response.json();
 
       if (!result.success || !result.data) {
-        throw new Error(result.error || "Failed to get sustainability analysis");
+        throw new Error(result.error ?? "Failed to get sustainability analysis");
       }
 
       setAiResponse(result.data);
@@ -194,6 +246,19 @@ export default function Sustainability() {
       setLoading(false);
     }
   }, []);
+
+  // Memoised sub-lists to avoid unnecessary mapping loops on every render
+  const renderedGridCards = useMemo(() => {
+    return energyData?.grids?.map((grid) => (
+      <GridCard key={grid.zone} grid={grid} />
+    )) ?? null;
+  }, [energyData?.grids]);
+
+  const renderedTips = useMemo(() => {
+    return aiResponse?.tips?.map((tip, idx) => (
+      <EnergyTipCard key={idx} tip={tip} />
+    )) ?? null;
+  }, [aiResponse?.tips]);
 
   return (
     <section
@@ -257,18 +322,16 @@ export default function Sustainability() {
       {/* Weather Conditions */}
       {energyData && (
         <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-lg p-3 mb-4 text-xs text-slate-300">
-          <span>🌡️ {energyData.weatherConditions.temperatureCelsius}°C</span>
-          <span>💧 {energyData.weatherConditions.humidity}% humidity</span>
-          <span>{energyData.weatherConditions.isRaining ? "🌧️ Raining" : "☀️ Clear"}</span>
+          <span>🌡️ {energyData.weatherConditions?.temperatureCelsius ?? 20}°C</span>
+          <span>💧 {energyData.weatherConditions?.humidity ?? 50}% humidity</span>
+          <span>{energyData.weatherConditions?.isRaining ? "🌧️ Raining" : "☀️ Clear"}</span>
         </div>
       )}
 
       {/* Energy Grid Cards */}
       {energyData && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          {energyData.grids.map((grid) => (
-            <GridCard key={grid.zone} grid={grid} />
-          ))}
+          {renderedGridCards}
         </div>
       )}
 
@@ -291,17 +354,17 @@ export default function Sustainability() {
           {/* Headline Stats */}
           <div className="grid grid-cols-3 gap-4">
             <div className="flex justify-center">
-              <EfficiencyGauge score={aiResponse.efficiencyScore} />
+              <EfficiencyGauge score={aiResponse.efficiencyScore ?? 0} />
             </div>
             <div className="flex flex-col items-center justify-center bg-white/5 rounded-lg p-4">
               <span className="text-2xl font-bold text-emerald-400">
-                {aiResponse.estimatedSavingsKWH}
+                {aiResponse.estimatedSavingsKWH ?? 0}
               </span>
               <span className="text-xs text-slate-400">kWh Savings</span>
             </div>
             <div className="flex flex-col items-center justify-center bg-white/5 rounded-lg p-4">
               <span className="text-2xl font-bold text-green-400">
-                {aiResponse.carbonReductionKg}
+                {aiResponse.carbonReductionKg ?? 0}
               </span>
               <span className="text-xs text-slate-400">kg CO₂ Reduced</span>
             </div>
@@ -314,33 +377,7 @@ export default function Sustainability() {
                 💡 Energy Efficiency Tips
               </h3>
               <div className="space-y-2">
-                {aiResponse.tips.map((tip, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/8 transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="text-sm font-medium text-white">
-                        {tip.title}
-                      </h4>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-500">{tip.targetZone}</span>
-                        <span
-                          className={`px-2 py-0.5 text-xs font-bold rounded uppercase ${
-                            tip.impactLevel === "high"
-                              ? "bg-emerald-500/30 text-emerald-300"
-                              : tip.impactLevel === "medium"
-                              ? "bg-yellow-500/30 text-yellow-300"
-                              : "bg-slate-500/30 text-slate-300"
-                          }`}
-                        >
-                          {tip.impactLevel}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-400">{tip.description}</p>
-                  </div>
-                ))}
+                {renderedTips}
               </div>
             </div>
           )}
@@ -358,5 +395,16 @@ export default function Sustainability() {
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Main export wrapping Sustainability with ErrorBoundary protection.
+ */
+export default function Sustainability() {
+  return (
+    <ErrorBoundary moduleName="Sustainability Monitor">
+      <SustainabilityInner />
+    </ErrorBoundary>
   );
 }

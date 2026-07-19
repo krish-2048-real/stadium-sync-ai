@@ -3,38 +3,112 @@
  *
  * Allows operators to select a PA announcement template (or write custom text),
  * pick target languages, and get AI-powered translations via Gemini.
+ *
+ * Optimised with React.useMemo, React.useCallback, and strict null/undefined safety.
  */
 
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import type {
   TranslationRequest,
   TranslationResponse,
   GenAIApiResponse,
 } from "@/types/stadium";
 import { SAMPLE_ANNOUNCEMENTS, TARGET_LANGUAGES } from "@/lib/simulatedData";
+import ErrorBoundary from "./ErrorBoundary";
 
 /* ------------------------------------------------------------------ */
-/*  Main Component                                                     */
+/*  Sub-Components (Memoised for Max Efficiency)                      */
 /* ------------------------------------------------------------------ */
 
-export default function MultilingualAssistant() {
-  const [sourceText, setSourceText] = useState(SAMPLE_ANNOUNCEMENTS[0]);
+/**
+ * Renders a single translated text item.
+ */
+const TranslationCard = React.memo(function TranslationCard({
+  language,
+  languageName,
+  text,
+}: {
+  language: string;
+  languageName: string;
+  text: string;
+}) {
+  const lang = language ?? "unknown";
+  const name = languageName ?? "Unknown Language";
+  const txt = text ?? "";
+
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/8 transition-colors">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 text-xs font-bold rounded uppercase">
+          {lang}
+        </span>
+        <span className="text-sm text-slate-400">{name}</span>
+      </div>
+      <p className="text-sm text-white leading-relaxed">{txt}</p>
+    </div>
+  );
+});
+
+/**
+ * Renders language pick options.
+ */
+const LanguageOption = React.memo(function LanguageOption({
+  code,
+  name,
+  isSelected,
+  onToggle,
+}: {
+  code: string;
+  name: string;
+  isSelected: boolean;
+  onToggle: (code: string) => void;
+}) {
+  return (
+    <label
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border cursor-pointer transition-all duration-200 ${
+        isSelected
+          ? "bg-purple-500/30 border-purple-500/50 text-purple-300"
+          : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={isSelected}
+        onChange={() => onToggle(code)}
+        className="sr-only"
+        aria-label={`Translate to ${name}`}
+      />
+      {name}
+    </label>
+  );
+});
+
+/* ------------------------------------------------------------------ */
+/*  Inner Multilingual Assistant Component                             */
+/* ------------------------------------------------------------------ */
+
+function MultilingualAssistantInner() {
+  const [sourceText, setSourceText] = useState(SAMPLE_ANNOUNCEMENTS[0] ?? "");
   const [context, setContext] = useState<TranslationRequest["context"]>("general");
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["es", "fr", "ar"]);
   const [aiResponse, setAiResponse] = useState<TranslationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** Toggle a language in the selection. */
+  /**
+   * Toggles selecting/deselecting target language option.
+   */
   const toggleLanguage = useCallback((code: string) => {
     setSelectedLanguages((prev) =>
       prev.includes(code) ? prev.filter((l) => l !== code) : [...prev, code]
     );
   }, []);
 
-  /** Send translation request to the API. */
+  /**
+   * Dispatches the API request to translate text across specified target languages.
+   */
   const translateAnnouncement = useCallback(async () => {
     if (!sourceText.trim() || selectedLanguages.length === 0) return;
 
@@ -61,7 +135,7 @@ export default function MultilingualAssistant() {
       const result: GenAIApiResponse<TranslationResponse> = await response.json();
 
       if (!result.success || !result.data) {
-        throw new Error(result.error || "Translation failed");
+        throw new Error(result.error ?? "Translation failed");
       }
 
       setAiResponse(result.data);
@@ -71,6 +145,40 @@ export default function MultilingualAssistant() {
       setLoading(false);
     }
   }, [sourceText, selectedLanguages, context]);
+
+  // Memoised presets to avoid creating array instances on every render
+  const renderedPresets = useMemo(() => {
+    return SAMPLE_ANNOUNCEMENTS.map((text, idx) => (
+      <option key={idx} value={text} className="bg-slate-800">
+        {text.slice(0, 70)}…
+      </option>
+    ));
+  }, []);
+
+  // Memoised target languages checkbox list
+  const renderedLanguageCheckboxes = useMemo(() => {
+    return TARGET_LANGUAGES.map((lang) => (
+      <LanguageOption
+        key={lang.code}
+        code={lang.code}
+        name={lang.name}
+        isSelected={selectedLanguages.includes(lang.code)}
+        onToggle={toggleLanguage}
+      />
+    ));
+  }, [selectedLanguages, toggleLanguage]);
+
+  // Memoised translations display
+  const renderedTranslations = useMemo(() => {
+    return aiResponse?.translations?.map((t, idx) => (
+      <TranslationCard
+        key={idx}
+        language={t.language}
+        languageName={t.languageName}
+        text={t.text}
+      />
+    )) ?? null;
+  }, [aiResponse?.translations]);
 
   return (
     <section
@@ -87,7 +195,7 @@ export default function MultilingualAssistant() {
             Multilingual PA Assistant
           </h2>
           <p className="text-xs text-slate-400">
-            AI-powered announcement translation for global fans
+            AI-powered announcement translation for global fans (FIFA 2026)
           </p>
         </div>
       </div>
@@ -108,11 +216,7 @@ export default function MultilingualAssistant() {
             onChange={(e) => setSourceText(e.target.value)}
             className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
           >
-            {SAMPLE_ANNOUNCEMENTS.map((text, idx) => (
-              <option key={idx} value={text} className="bg-slate-800">
-                {text.slice(0, 70)}…
-              </option>
-            ))}
+            {renderedPresets}
           </select>
         </div>
 
@@ -135,7 +239,7 @@ export default function MultilingualAssistant() {
             aria-describedby="char-count"
           />
           <p id="char-count" className="text-xs text-slate-500 mt-1">
-            {sourceText.length}/2000 characters
+            {(sourceText ?? "").length}/2000 characters
           </p>
         </div>
 
@@ -173,25 +277,7 @@ export default function MultilingualAssistant() {
             Target Languages
           </legend>
           <div className="flex flex-wrap gap-2">
-            {TARGET_LANGUAGES.map((lang) => (
-              <label
-                key={lang.code}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border cursor-pointer transition-all duration-200 ${
-                  selectedLanguages.includes(lang.code)
-                    ? "bg-purple-500/30 border-purple-500/50 text-purple-300"
-                    : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedLanguages.includes(lang.code)}
-                  onChange={() => toggleLanguage(lang.code)}
-                  className="sr-only"
-                  aria-label={`Translate to ${lang.name}`}
-                />
-                {lang.name}
-              </label>
-            ))}
+            {renderedLanguageCheckboxes}
           </div>
         </fieldset>
       </div>
@@ -246,23 +332,10 @@ export default function MultilingualAssistant() {
       {aiResponse && (
         <div aria-live="polite" className="space-y-3 border-t border-white/10 pt-4">
           <h3 className="text-sm font-semibold text-slate-300">
-            📝 Translations ({aiResponse.translations?.length || 0} languages)
+            📝 Translations ({(aiResponse.translations ?? []).length} languages)
           </h3>
           <div className="space-y-2">
-            {aiResponse.translations?.map((t, idx) => (
-              <div
-                key={idx}
-                className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/8 transition-colors"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 text-xs font-bold rounded uppercase">
-                    {t.language}
-                  </span>
-                  <span className="text-sm text-slate-400">{t.languageName}</span>
-                </div>
-                <p className="text-sm text-white leading-relaxed">{t.text}</p>
-              </div>
-            ))}
+            {renderedTranslations}
           </div>
         </div>
       )}
@@ -277,5 +350,16 @@ export default function MultilingualAssistant() {
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Main export wrapping MultilingualAssistant with ErrorBoundary protection.
+ */
+export default function MultilingualAssistant() {
+  return (
+    <ErrorBoundary moduleName="Multilingual PA Assistant">
+      <MultilingualAssistantInner />
+    </ErrorBoundary>
   );
 }

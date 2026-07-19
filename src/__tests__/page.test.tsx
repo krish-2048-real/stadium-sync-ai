@@ -115,9 +115,9 @@ describe("CrowdManagement Component", () => {
   it("shows empty state when no data is loaded", () => {
     render(<CrowdManagement />);
 
-    expect(screen.getByText(/no data loaded/i)).toBeInTheDocument();
+    expect(screen.getByText(/operations data empty/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/click.*analyze gates.*to generate/i)
+      screen.getByText(/click.*analyze.*to fetch/i)
     ).toBeInTheDocument();
   });
 
