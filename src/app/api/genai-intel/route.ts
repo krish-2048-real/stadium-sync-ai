@@ -257,6 +257,10 @@ const getRealisticTranslation = (lang: string): string => {
     case 'fr': return "Bienvenue à la Coupe du Monde de la FIFA 2026 ! Veuillez suivre les panneaux vers la zone de sièges qui vous est assignée.";
     case 'de': return "Willkommen zur FIFA Fussball-Weltmeisterschaft 2026! Bitte folgen Sie den Schildern zu Ihrem zugewiesenen Sitzbereich.";
     case 'ar': return "مرحباً بكم في كأس العالم لكرة القدم 2026! يرجى اتباع اللوحات الإرشادية للوصول إلى منطقة المقاعد المخصصة لكم.";
+    case 'pt': return "Bem-vindo à Copa do Mundo da FIFA 2026! Siga as placas para sua área de assento designada.";
+    case 'ja': return "FIFAワールドカップ2026へようこそ！指定された座席エリアへの標識に従ってください。";
+    case 'zh': return "欢迎来到 2026 年 FIFA 世界杯！请按照指示牌前往您指定的座位区。";
+    case 'hi': return "फीफा विश्व कप 2026 में आपका स्वागत है! कृपया अपने निर्धारित बैठने के क्षेत्र के संकेतों का पालन करें।";
     default: return `[MOCK] Translated to ${lang}`;
   }
 };
