@@ -135,10 +135,10 @@ export default function DashboardPage(): React.ReactElement {
           <CrowdManagement />
 
           {/* Row 2: Translation & Sustainability side by side */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <aside className="grid grid-cols-1 lg:grid-cols-2 gap-8" aria-label="Secondary Modules">
             <MultilingualAssistant />
             <Sustainability />
-          </div>
+          </aside>
         </div>
 
         {/* Footer */}

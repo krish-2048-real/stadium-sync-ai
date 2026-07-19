@@ -639,4 +639,50 @@ describe("GenAI API Route — Input Validation", () => {
       expect(result.valid).toBe(false);
     });
   });
+
+  describe("API Fallback Payload Checks", () => {
+    it("renders fallback text for Crowd Management including Immediate Rerouting Action Required", async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        json: async () => ({
+          success: true,
+          module: "crowd-management",
+          data: { alertLevel: "moderate", analysis: "Fallback: Returning simulated data. Immediate Rerouting Action Required.", deploymentSuggestions: [], transportationAdvisory: "Match-Day Shuttles synchronized.", navigationGuidance: "Standard Spectator Routes and Wheelchair & Limited-Mobility Accessibility Paths are clear.", triggerImmediateRerouting: true },
+          timestamp: "2026-07-15T14:30:00Z",
+        }),
+      });
+
+      render(<CrowdManagement />);
+      fireEvent.click(
+        screen.getByRole("button", { name: /analyze gate wait times/i })
+      );
+
+      await waitFor(() => {
+        expect(screen.getAllByText(/Immediate Rerouting Action Required/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Match-Day Shuttles synchronized/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Standard Spectator Routes/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Wheelchair & Limited-Mobility Accessibility Paths/i).length).toBeGreaterThan(0);
+      });
+    });
+
+    it("renders fallback text for Sustainability including Smart Energy Grid optimization", async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        json: async () => ({
+          success: true,
+          module: "sustainability",
+          data: { efficiencyScore: 85, estimatedSavingsKWH: 1500, tips: [{ title: "Optimize lighting", description: "Use LED lighting on 50% power for Smart Energy Grid optimization.", impactLevel: "medium", targetZone: "Stadium" }], carbonReductionKg: 500, wasteTips: [{ title: "Recycle", description: "Review Waste & Recycling Dashboard metrics.", impactLevel: "high", targetZone: "Concourses" }] },
+          timestamp: "2026-07-15T14:30:00Z",
+        }),
+      });
+
+      render(<Sustainability />);
+      fireEvent.click(
+        screen.getByRole("button", { name: /analyze stadium energy efficiency/i })
+      );
+
+      await waitFor(() => {
+        expect(screen.getAllByText(/Smart Energy Grid optimization/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Waste & Recycling Dashboard metrics/i).length).toBeGreaterThan(0);
+      });
+    });
+  });
 });
