@@ -247,6 +247,20 @@ Provide 3-5 high-impact energy efficiency tips and 2-3 waste reduction tips to m
 /*  Route Handler                                                      */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+const getRealisticTranslation = (lang: string): string => {
+  switch(lang) {
+    case 'es': return "¡Bienvenidos a la Copa Mundial de la FIFA 2026! Por favor, siga las indicaciones hacia su zona de asientos asignada.";
+    case 'fr': return "Bienvenue à la Coupe du Monde de la FIFA 2026 ! Veuillez suivre les panneaux vers la zone de sièges qui vous est assignée.";
+    case 'de': return "Willkommen zur FIFA Fussball-Weltmeisterschaft 2026! Bitte folgen Sie den Schildern zu Ihrem zugewiesenen Sitzbereich.";
+    case 'ar': return "مرحباً بكم في كأس العالم لكرة القدم 2026! يرجى اتباع اللوحات الإرشادية للوصول إلى منطقة المقاعد المخصصة لكم.";
+    default: return `[MOCK] Translated to ${lang}`;
+  }
+};
+
 /**
  * Next.js API Route Handler for smart stadium operations analysis.
  *
@@ -256,6 +270,7 @@ Provide 3-5 high-impact energy efficiency tips and 2-3 waste reduction tips to m
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const timestamp = new Date().toISOString();
   let requestedModule = "crowd-management";
+  let targetLangs = ["es", "fr", "de", "ar"];
 
   try {
     // --- Rate Limiting ---
@@ -336,6 +351,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const payload = body as GenAIRequestPayload;
     requestedModule = payload.module || "crowd-management";
+    if (requestedModule === "translation") {
+      targetLangs = payload.translationData?.targetLanguages ?? targetLangs;
+    }
 
     // --- Check API Key (Safe Fallback) ---
     const apiKey = process.env.GEMINI_API_KEY;
@@ -345,7 +363,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (payload.module === "crowd-management") {
          mockData = { alertLevel: "moderate", analysis: "[MOCK] GEMINI_API_KEY missing. Returning simulated data.", deploymentSuggestions: [], transportationAdvisory: "[MOCK] Transit operational.", navigationGuidance: "[MOCK] Proceed normally.", triggerImmediateRerouting: false };
       } else if (payload.module === "translation") {
-         mockData = { originalText: payload.translationData?.sourceText ?? "", translations: (payload.translationData?.targetLanguages ?? []).map(lang => ({ language: lang, languageName: lang, text: `[MOCK] Translated to ${lang}` })) };
+         mockData = { originalText: payload.translationData?.sourceText ?? "", translations: targetLangs.map(lang => ({ language: lang, languageName: lang, text: getRealisticTranslation(lang) })) };
       } else if (payload.module === "sustainability") {
          mockData = { efficiencyScore: 85, estimatedSavingsKWH: 1500, tips: [{ title: "[MOCK] Optimize lighting", description: "Use LED lighting on 50% power.", impactLevel: "medium", targetZone: "Stadium" }], carbonReductionKg: 500, wasteTips: [{ title: "[MOCK] Recycle", description: "Add recycling bins.", impactLevel: "high", targetZone: "Concourses" }] };
       }
@@ -450,7 +468,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (requestedModule === "crowd-management") {
         mockData = { alertLevel: "moderate", analysis: "[MOCK] Fallback: Returning simulated data.", deploymentSuggestions: [], transportationAdvisory: "[MOCK] Transit operational.", navigationGuidance: "[MOCK] Proceed normally.", triggerImmediateRerouting: false };
     } else if (requestedModule === "translation") {
-        mockData = { originalText: "Fallback Text", translations: ["es"].map(lang => ({ language: lang, languageName: lang, text: `[MOCK] Translated to ${lang}` })) };
+        mockData = { originalText: "Welcome to the FIFA World Cup 2026! Please follow the signs to your designated seating area.", translations: targetLangs.map(lang => ({ language: lang, languageName: lang, text: getRealisticTranslation(lang) })) };
     } else if (requestedModule === "sustainability") {
         mockData = { efficiencyScore: 85, estimatedSavingsKWH: 1500, tips: [{ title: "[MOCK] Optimize lighting", description: "Use LED lighting on 50% power.", impactLevel: "medium", targetZone: "Stadium" }], carbonReductionKg: 500, wasteTips: [{ title: "[MOCK] Recycle", description: "Add recycling bins.", impactLevel: "high", targetZone: "Concourses" }] };
     }
